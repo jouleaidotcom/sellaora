@@ -36,6 +36,10 @@ const storeSchema = new mongoose.Schema({
   layout: {
     type: Object,
     default: null
+  },
+  approved: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,

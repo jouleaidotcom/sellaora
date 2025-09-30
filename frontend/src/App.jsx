@@ -7,6 +7,8 @@ import Products from './pages/Products'
 import AddProduct from './pages/AddProduct'
 import EditProduct from './pages/EditProduct'
 import StoreChatbox from './pages/dashboard/StoreChatbox'
+import StoreApproval from './pages/dashboard/StoreApproval'
+import StoreEditor from './pages/dashboard/StoreEditor'
 import ProtectedRoute from './components/ProtectedRoute'
 import { getAuthToken } from './utils/api'
 
@@ -131,6 +133,22 @@ function App() {
           element={
             <ProtectedRoute>
               <StoreChatbox />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/store/:storeId/approval" 
+          element={
+            <ProtectedRoute>
+              <StoreApproval />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/store/:storeId/editor" 
+          element={
+            <ProtectedRoute>
+              <StoreEditor />
             </ProtectedRoute>
           } 
         />
