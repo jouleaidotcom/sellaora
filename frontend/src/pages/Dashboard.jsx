@@ -70,9 +70,11 @@ const Dashboard = () => {
       const response = await storeAPI.createStore(newStore);
       
       if (response.success) {
-        setStores([response.data.store, ...stores]);
+        const created = response.data.store;
+        setStores([created, ...stores]);
         setNewStore({ storeName: '', domain: '', description: '' });
         setShowCreateForm(false);
+        navigate(`/dashboard/store/${created._id}/chatbox`);
       } else {
         setError('Failed to create store');
       }
