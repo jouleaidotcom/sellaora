@@ -113,6 +113,12 @@ export const storeAPI = {
       method: 'DELETE',
     });
   },
+  sendAIPrompt: async (storeId, prompt) => {
+    return makeAuthenticatedRequest(`/store/${storeId}/ai-prompt`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    });
+  },
 };
 
 // Product API functions

@@ -28,6 +28,14 @@ const storeSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  theme: {
+    type: Object,
+    default: null
+  },
+  layout: {
+    type: Object,
+    default: null
   }
 }, {
   timestamps: true,
