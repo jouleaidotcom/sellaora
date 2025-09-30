@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 import Signup from './pages/Signup'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Products from './pages/Products'
+import AddProduct from './pages/AddProduct'
+import EditProduct from './pages/EditProduct'
 import ProtectedRoute from './components/ProtectedRoute'
 import { getAuthToken } from './utils/api'
 
@@ -119,6 +122,30 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/products" 
+          element={
+            <ProtectedRoute>
+              <Products />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/products/new" 
+          element={
+            <ProtectedRoute>
+              <AddProduct />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/products/:id/edit" 
+          element={
+            <ProtectedRoute>
+              <EditProduct />
             </ProtectedRoute>
           } 
         />
