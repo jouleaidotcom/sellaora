@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3001;
 // Import routes
 const authRoutes = require('./routes/auth');
 const storeRoutes = require('./routes/store');
+const productRoutes = require('./routes/product');
 
 // Middleware
 app.use(cors());
@@ -32,6 +33,7 @@ connectDB();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/api/products', productRoutes);
 
 // Legacy routes for backward compatibility
 app.get('/api/hello', (req, res) => {

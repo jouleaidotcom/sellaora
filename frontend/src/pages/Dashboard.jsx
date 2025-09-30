@@ -248,7 +248,12 @@ const Dashboard = () => {
                 <div key={store._id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-800">{store.storeName}</h3>
+                      <button
+                        onClick={() => navigate(`/dashboard/products?storeId=${store._id}`)}
+                        className="text-left text-lg font-semibold text-blue-600 hover:underline"
+                      >
+                        {store.storeName}
+                      </button>
                       <p className="text-gray-600 mb-2">
                         Domain: <span className="font-mono text-sm">{store.domain}</span>
                       </p>

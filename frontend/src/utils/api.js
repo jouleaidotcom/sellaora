@@ -115,4 +115,35 @@ export const storeAPI = {
   },
 };
 
-export default { authAPI, storeAPI };
+// Product API functions
+export const productAPI = {
+  create: async (productData) => {
+    return makeAuthenticatedRequest('/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    });
+  },
+
+  listByStore: async (storeId) => {
+    return makeAuthenticatedRequest(`/products/${storeId}`);
+  },
+
+  getById: async (id) => {
+    return makeAuthenticatedRequest(`/products/item/${id}`);
+  },
+
+  update: async (id, updateData) => {
+    return makeAuthenticatedRequest(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+  },
+
+  remove: async (id) => {
+    return makeAuthenticatedRequest(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export default { authAPI, storeAPI, productAPI };
