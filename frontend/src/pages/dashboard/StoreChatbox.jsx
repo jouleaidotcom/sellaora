@@ -94,7 +94,17 @@ const StoreChatbox = () => {
           </form>
           <div className="p-3 border-t flex gap-2">
             <button onClick={onTryAgain} className="text-sm px-3 py-2 rounded border">Try again / Change prompt</button>
-            <button onClick={() => navigate(`/dashboard/products?storeId=${storeId}`)} className="text-sm px-3 py-2 rounded bg-green-600 text-white">Continue with this theme</button>
+            <button 
+              onClick={async () => {
+                try {
+                  await storeAPI.approveStore(storeId);
+                } catch (_) {}
+                navigate(`/dashboard/store/${storeId}/editor`);
+              }} 
+              className="text-sm px-3 py-2 rounded bg-green-600 text-white"
+            >
+              Continue with this theme
+            </button>
           </div>
         </div>
 

@@ -11,6 +11,8 @@ const authRoutes = require('./routes/auth');
 const storeRoutes = require('./routes/store');
 const productRoutes = require('./routes/product');
 const storeAIRoutes = require('./routes/storeAI');
+const storeApprovalRoutes = require('./routes/storeApproval');
+const storeEditorRoutes = require('./routes/storeEditor');
 
 // Middleware
 app.use(cors());
@@ -36,6 +38,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/store', storeAIRoutes);
+app.use('/api/store', storeApprovalRoutes);
+app.use('/api/store', storeEditorRoutes);
 
 // Legacy routes for backward compatibility
 app.get('/api/hello', (req, res) => {

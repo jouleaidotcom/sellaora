@@ -119,6 +119,20 @@ export const storeAPI = {
       body: JSON.stringify({ prompt }),
     });
   },
+  approveStore: async (storeId) => {
+    return makeAuthenticatedRequest(`/store/${storeId}/approve`, {
+      method: 'PUT',
+    });
+  },
+  getEditorData: async (storeId) => {
+    return makeAuthenticatedRequest(`/store/${storeId}/editor`);
+  },
+  saveEditorUpdate: async (storeId, payload) => {
+    return makeAuthenticatedRequest(`/store/${storeId}/editor-update`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // Product API functions
