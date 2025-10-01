@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import AddProduct from './pages/AddProduct'
 import EditProduct from './pages/EditProduct'
+import Editor from './pages/Editor'
 import StoreChatbox from './pages/dashboard/StoreChatbox'
 import StoreApproval from './pages/dashboard/StoreApproval'
 import StoreEditor from './pages/dashboard/StoreEditor'
@@ -168,13 +169,21 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/dashboard/products/:id/edit" 
+        <Route
+          path="/dashboard/products/:id/edit"
           element={
             <ProtectedRoute>
               <EditProduct />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/editor/:themeId"
+          element={
+            <ProtectedRoute>
+              <Editor />
+            </ProtectedRoute>
+          }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
