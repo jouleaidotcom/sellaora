@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { storeAPI, getAuthToken } from '../../utils/api';
 import StorePreview from '../../components/store/StorePreview';
@@ -24,10 +24,12 @@ const StoreChatbox = () => {
       try {
         const res = await storeAPI.getStoreById(storeId);
         if (res.success) setStore(res.data.store);
-      } catch (_) {}
+      } catch (err) {
+        console.error('Failed to load store', err);
+      }
     };
     load();
-  }, [storeId]);
+  }, [storeId, isAuthed, navigate]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -97,9 +99,17 @@ const StoreChatbox = () => {
             <button 
               onClick={async () => {
                 try {
-                  await storeAPI.approveStore(storeId);
-                } catch (_) {}
-                navigate(`/dashboard/store/${storeId}/editor`);
+                  // choose the theme on the backend
+                  const chosenThemeId = store?.theme?.id || store?.theme?.themeId || 'theme-1';
+                  await storeAPI.chooseTheme(storeId, chosenThemeId);
+                  // store the storeId so editor can fetch editor data
+                  localStorage.setItem('editorStoreId', storeId);
+                  // redirect to editor page
+                  navigate(`/editor/${chosenThemeId}`);
+                } catch (e) {
+                  console.error('Choose theme failed', e);
+                  alert('Failed to choose theme');
+                }
               }} 
               className="text-sm px-3 py-2 rounded bg-green-600 text-white"
             >
