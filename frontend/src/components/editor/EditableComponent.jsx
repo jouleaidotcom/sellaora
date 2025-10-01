@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-const EditableText = ({ value, onChange, className, multiline = false }) => {
+const EditableText = ({ value, onChange, className, style, multiline = false }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(value);
   const ref = useRef(null);
@@ -43,11 +43,16 @@ const EditableText = ({ value, onChange, className, multiline = false }) => {
     <div
       ref={ref}
       className={`${className} ${isEditing ? 'outline-2 outline-blue-500 outline-dashed' : 'cursor-text'}`}
+      style={style}
       contentEditable={isEditing}
       suppressContentEditableWarning
-      onClick={(e) => {
+      onDoubleClick={(e) => {
         e.stopPropagation();
         setIsEditing(true);
+      }}
+      onPointerDown={(e) => {
+        // prevent parent drag/select handlers from stealing focus
+        e.stopPropagation();
       }}
       onBlur={handleBlur}
       onInput={(e) => setText(e.currentTarget.textContent)}

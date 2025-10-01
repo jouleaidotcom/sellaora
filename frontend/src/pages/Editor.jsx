@@ -11,6 +11,7 @@ const Editor = () => {
   const { themeId } = useParams();
   const navigate = useNavigate();
   const [components, setComponents] = useState([]);
+  const [htmlContent, setHtmlContent] = useState(null);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -25,57 +26,83 @@ const Editor = () => {
   );
 
   useEffect(() => {
-    const mockThemeData = {
-      id: themeId || 'theme-1',
-      components: [
-        {
-          id: 'hero-1',
-          type: 'hero',
-          props: {
-            title: 'Welcome to Your Store',
-            subtitle: 'Create amazing experiences with our platform',
-            buttonText: 'Get Started',
-            buttonLink: '#',
-            bgColor: '#1e3a8a',
-            textColor: '#ffffff',
-            image: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1200',
-          },
-        },
-        {
-          id: 'features-1',
-          type: 'features',
-          props: {
-            title: 'Why Choose Us',
-            items: [
-              { icon: '⚡', title: 'Fast', description: 'Lightning-fast performance' },
-              { icon: '🔒', title: 'Secure', description: 'Bank-level security' },
-              { icon: '💎', title: 'Premium', description: 'Top-quality service' },
-            ],
-            bgColor: '#ffffff',
-            textColor: '#1f2937',
-          },
-        },
-        {
-          id: 'footer-1',
-          type: 'footer',
-          props: {
-            companyName: 'Your Company',
-            tagline: 'Building the future, one step at a time',
-            links: [
-              { text: 'About', url: '#about' },
-              { text: 'Contact', url: '#contact' },
-              { text: 'Privacy', url: '#privacy' },
-            ],
-            bgColor: '#111827',
-            textColor: '#e5e7eb',
-          },
-        },
-      ],
+    const loadEditor = async () => {
+      try {
+        const storeId = localStorage.getItem('editorStoreId');
+        if (!storeId) {
+          // fallback to mock
+          setComponents([]);
+          setHistory([[]]);
+          setHistoryIndex(0);
+          return;
+        }
+
+        const res = await fetch(`/api/store/${storeId}/editor`, {
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch editor data');
+        const body = await res.json();
+        const payload = body.data;
+
+        // Attempt to use parsed layout -> components, otherwise default to empty
+        let comps = [];
+        try {
+          if (payload.layout && Array.isArray(payload.layout.sections)) {
+            // convert layout.sections to editor components if they look like components
+            comps = payload.layout.sections.map((s, idx) => ({ id: `${s.type || 'section'}-${idx}`, type: s.type || 'textblock', props: s }));
+          }
+        } catch {
+          comps = [];
+        }
+
+        // htmlContent may be provided by backend (AI generated or saved)
+        // Sometimes htmlContent is actually a JSON stringified layout. Detect that and convert it to components.
+        let rawHtml = payload.htmlContent || null;
+        if (rawHtml) {
+          const trimmed = rawHtml.trim();
+          // Try direct JSON parse if it looks like JSON
+          let parsedJson = null;
+          try {
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+              parsedJson = JSON.parse(trimmed);
+            } else {
+              // Try to extract JSON embedded inside HTML (e.g. <div>JSON</div>)
+              const firstIdx = Math.min(
+                ...( [trimmed.indexOf('{'), trimmed.indexOf('[')].filter(i => i >= 0)
+              ));
+              if (!Number.isNaN(firstIdx) && firstIdx >= 0) {
+                const lastIdx = Math.max(trimmed.lastIndexOf('}'), trimmed.lastIndexOf(']'));
+                if (lastIdx > firstIdx) {
+                  const candidate = trimmed.slice(firstIdx, lastIdx + 1);
+                  parsedJson = JSON.parse(candidate);
+                }
+              }
+            }
+          } catch {
+            parsedJson = null;
+          }
+
+          if (parsedJson && parsedJson.sections && Array.isArray(parsedJson.sections)) {
+            // Use parsed sections as components and do not render iframe
+            comps = parsedJson.sections.map((s, idx) => ({ id: `${s.type || 'section'}-${idx}`, type: s.type || 'textblock', props: s }));
+            rawHtml = null;
+          }
+        }
+
+        setHtmlContent(rawHtml);
+
+        setComponents(comps);
+        setHistory([JSON.parse(JSON.stringify(comps))]);
+        setHistoryIndex(0);
+      } catch (error) {
+        console.error('Load editor failed', error);
+        setComponents([]);
+        setHistory([[]]);
+        setHistoryIndex(0);
+      }
     };
 
-    setComponents(mockThemeData.components);
-    setHistory([mockThemeData.components]);
-    setHistoryIndex(0);
+    loadEditor();
   }, [themeId]);
 
   const saveToHistory = useCallback((newComponents) => {
@@ -193,6 +220,11 @@ const Editor = () => {
     );
     setComponents(newComponents);
     saveToHistory(newComponents);
+    // If the updated component is currently selected, update the selectedComponent state
+    if (selectedComponent && selectedComponent.id === id) {
+      const updated = newComponents.find((c) => c.id === id);
+      if (updated) setSelectedComponent(updated);
+    }
   };
 
   const deleteComponent = (id) => {
@@ -239,8 +271,19 @@ const Editor = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log('Saving theme:', { themeId, components });
+      // Build layout from components
+      const layout = { sections: components.map((c) => ({ type: c.type, ...c.props })) };
+      const storeId = localStorage.getItem('editorStoreId');
+      if (!storeId) throw new Error('Missing storeId for save');
+
+      const resp = await fetch(`/api/store/${storeId}/editor-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ layout, theme: { id: themeId }, products: {} })
+      });
+      if (!resp.ok) throw new Error('Save failed');
+      const data = await resp.json();
+      console.log('Save response', data);
       alert('Theme saved successfully!');
     } catch (error) {
       console.error('Save failed:', error);
@@ -272,16 +315,32 @@ const Editor = () => {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <ComponentLibrary />
 
-          <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <Canvas
-              components={components}
-              selectedComponent={selectedComponent}
-              onSelectComponent={setSelectedComponent}
-              onUpdateComponent={updateComponent}
-              onDeleteComponent={deleteComponent}
-              onDuplicateComponent={duplicateComponent}
-            />
-          </SortableContext>
+          {htmlContent ? (
+            // Render a sandboxed iframe for safer live preview. No scripts allowed.
+            <div className="flex-1 bg-gray-50 overflow-hidden p-4">
+              <div className="max-w-7xl mx-auto py-8">
+                <div className="bg-white shadow-2xl rounded-lg overflow-hidden h-full">
+                  <iframe
+                    title="Theme Preview"
+                    sandbox=""
+                    srcDoc={htmlContent}
+                    style={{ width: '100%', height: '80vh', border: 'none' }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              <Canvas
+                components={components}
+                selectedComponent={selectedComponent}
+                onSelectComponent={setSelectedComponent}
+                onUpdateComponent={updateComponent}
+                onDeleteComponent={deleteComponent}
+                onDuplicateComponent={duplicateComponent}
+              />
+            </SortableContext>
+          )}
 
           <PropertiesPanel
             selectedComponent={selectedComponent}

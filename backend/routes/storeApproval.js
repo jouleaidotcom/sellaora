@@ -28,7 +28,17 @@ router.get('/:storeId/editor', authMiddleware, ownerCheckMiddleware((req) => req
     const store = await Store.findById(req.params.storeId);
     const products = await Product.find({ storeId: req.params.storeId }).sort({ createdAt: -1 });
 
-    return res.json({ success: true, data: { store, products } });
+    // Build editor payload expected by frontend
+    const payload = {
+      storeId: store._id.toString(),
+      themeId: store.chosenThemeId || store.theme?.id || null,
+      // If theme contains raw HTML, use it; otherwise derive minimal htmlContent from layout
+      htmlContent: store.theme?.htmlContent || (store.layout ? `<div id="store-root">${JSON.stringify(store.layout)}</div>` : '<div></div>'),
+      pages: (store.pages && Array.isArray(store.pages)) ? store.pages : ['Home'],
+      products: products || []
+    };
+
+    return res.json({ success: true, data: payload });
   } catch (error) {
     console.error('Get editor data error:', error);
     return res.status(500).json({ success: false, message: 'Server error fetching editor data' });
@@ -86,6 +96,31 @@ router.post('/:storeId/editor-update', authMiddleware, ownerCheckMiddleware((req
   } catch (error) {
     console.error('Editor update error:', error);
     return res.status(500).json({ success: false, message: 'Server error during editor update' });
+  }
+});
+
+// POST /api/store/themes/choose
+router.post('/themes/choose', authMiddleware, async (req, res) => {
+  try {
+    const { storeId, themeId } = req.body;
+    if (!storeId || !themeId) {
+      return res.status(400).json({ success: false, message: 'storeId and themeId are required' });
+    }
+
+    // Ensure owner
+    const store = await Store.findById(storeId);
+    if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+    if (store.ownerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    store.chosenThemeId = themeId;
+    await store.save();
+
+    return res.json({ success: true, message: 'Theme chosen', data: { store } });
+  } catch (error) {
+    console.error('Choose theme error:', error);
+    return res.status(500).json({ success: false, message: 'Server error when choosing theme' });
   }
 });
 

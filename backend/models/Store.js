@@ -41,6 +41,12 @@ const storeSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }
+  ,
+  // ID of the currently chosen theme (frontend/editor may use this to open editor)
+  chosenThemeId: {
+    type: String,
+    default: null
+  },
 }, {
   timestamps: true,
   toJSON: {

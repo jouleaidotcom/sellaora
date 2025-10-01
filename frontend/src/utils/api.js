@@ -124,6 +124,12 @@ export const storeAPI = {
       method: 'PUT',
     });
   },
+  chooseTheme: async (storeId, themeId) => {
+    return makeAuthenticatedRequest(`/store/themes/choose`, {
+      method: 'POST',
+      body: JSON.stringify({ storeId, themeId }),
+    });
+  },
   getEditorData: async (storeId) => {
     return makeAuthenticatedRequest(`/store/${storeId}/editor`);
   },
