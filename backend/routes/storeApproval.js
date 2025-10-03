@@ -60,7 +60,11 @@ router.post('/:storeId/editor-update', authMiddleware, ownerCheckMiddleware((req
 
     // Update store layout/theme
     const update = {};
-    if (layout !== undefined) update.layout = layout;
+    if (layout !== undefined) {
+      update.layout = layout;
+      // Also update jsonLayout for publishing feature
+      update.jsonLayout = layout;
+    }
     if (theme !== undefined) update.theme = theme;
 
     let updatedStore = null;

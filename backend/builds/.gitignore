@@ -1,0 +1,7 @@
+# Ignore all build directories and files
+*
+!.gitignore
+
+# This directory is used for temporary React project builds
+# during the publishing process. All contents are cleaned up
+# automatically after deployment.
