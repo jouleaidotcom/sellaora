@@ -37,11 +37,30 @@ const storeSchema = new mongoose.Schema({
     type: Object,
     default: null
   },
+  // JSON layout for publishing (AI generated + user edited)
+  jsonLayout: {
+    type: Object,
+    default: null
+  },
+  // Published URL from Vercel
+  publishedUrl: {
+    type: String,
+    default: null
+  },
+  // Vercel deployment ID for management
+  vercelDeploymentId: {
+    type: String,
+    default: null
+  },
+  // Last published timestamp
+  lastPublished: {
+    type: Date,
+    default: null
+  },
   approved: {
     type: Boolean,
     default: false
-  }
-  ,
+  },
   // ID of the currently chosen theme (frontend/editor may use this to open editor)
   chosenThemeId: {
     type: String,

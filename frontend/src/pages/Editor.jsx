@@ -662,6 +662,15 @@ const Editor = () => {
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         isSaving={isSaving}
+        storeId={localStorage.getItem('editorStoreId')}
+        jsonLayout={{
+          pages: pages.length > 1 
+            ? pages.map((p) => ({ 
+                name: p.name, 
+                sections: (componentsByPage[p.name] || (p.name === pages[currentPage]?.name ? components : [])).map((c) => ({ type: c.type, ...c.props })) 
+              }))
+            : [{ name: 'Home', sections: components.map((c) => ({ type: c.type, ...c.props })) }]
+        }}
       />
 
       <PageTabs
