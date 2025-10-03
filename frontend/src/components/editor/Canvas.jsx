@@ -23,7 +23,7 @@ const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onD
         }`}
         onClick={() => onSelect(component)}
       >
-        <EditableComponent component={component} onUpdate={onUpdate} />
+        <EditableComponent component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />
       </div>
     </div>
   );
