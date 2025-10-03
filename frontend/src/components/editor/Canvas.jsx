@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useDroppable } from '@dnd-kit/core';
 import { useState } from 'react';
 import EditableComponent from './EditableComponent';
 
@@ -37,10 +38,13 @@ const Canvas = ({
   onDuplicateComponent,
   onNavigatePage,
 }) => {
+  // Always-present droppable area so library items can be dropped onto an empty canvas
+  const { setNodeRef: setCanvasRef, isOver } = useDroppable({ id: 'canvas-dropzone' });
+
   return (
     <div className="flex-1 bg-gray-50 overflow-y-auto">
       <div className="max-w-7xl mx-auto py-8">
-        <div className="bg-white shadow-2xl rounded-lg overflow-hidden">
+        <div ref={setCanvasRef} className={`bg-white shadow-2xl rounded-lg overflow-hidden ${isOver ? 'ring-2 ring-blue-400' : ''}`}>
           {components.length === 0 ? (
             <div className="flex items-center justify-center h-96 text-gray-400">
               <div className="text-center">
