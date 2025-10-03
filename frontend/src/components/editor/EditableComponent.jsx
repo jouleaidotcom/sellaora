@@ -446,7 +446,7 @@ const ButtonComponent = ({ component, onUpdate, onNavigatePage }) => {
   );
 };
 
-const EditableComponent = ({ component, onUpdate }) => {
+const EditableComponent = ({ component, onUpdate, onNavigatePage }) => {
   const componentMap = {
     hero: HeroComponent,
     features: FeaturesComponent,
@@ -473,7 +473,7 @@ const EditableComponent = ({ component, onUpdate }) => {
 
   const Component = componentMap[component.type] || TextBlockComponent;
 
-  return <Component component={component} onUpdate={onUpdate} />;
+  return <Component component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />;
 };
 
 export default EditableComponent;
