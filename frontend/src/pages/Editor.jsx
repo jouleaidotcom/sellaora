@@ -47,9 +47,92 @@ const Editor = () => {
         // Attempt to use parsed layout -> components, otherwise default to empty
         let comps = [];
         try {
+          const normalizeSection = (s, idx) => {
+            const t = String(s.type || '').toLowerCase();
+            const id = `${t || 'section'}-${idx}`;
+            // Map AI/preview types into editor canonical shapes
+            if (t === 'navbar') {
+              return {
+                id,
+                type: 'navbar',
+                props: {
+                  logo: s.logo || 'Logo',
+                  links: Array.isArray(s.links) ? s.links.map(l => ({ text: l.text || 'Link', url: l.url || '#' })) : [
+                    { text: 'Home', url: '#' },
+                    { text: 'Products', url: '#' },
+                    { text: 'About', url: '#' },
+                  ],
+                  bgColor: s.bgColor || '#ffffff',
+                  textColor: s.textColor || '#1f2937',
+                }
+              };
+            }
+            if (t === 'hero') {
+              return {
+                id,
+                type: 'hero',
+                props: {
+                  title: s.title || 'New Hero Section',
+                  subtitle: s.subtitle || 'Add your subtitle here',
+                  buttonText: s.buttonText || 'Click Me',
+                  buttonLink: s.buttonLink || '#',
+                  bgColor: s.bgColor || '#3b82f6',
+                  textColor: s.textColor || '#ffffff',
+                  image: s.image || s.imageUrl || '',
+                }
+              };
+            }
+            if (t === 'features' || t === 'featuredproducts') {
+              const items = Array.isArray(s.items) ? s.items : Array.isArray(s.features) ? s.features : [];
+              return {
+                id,
+                type: 'features',
+                props: {
+                  title: s.title || 'Features Section',
+                  items: (items.length ? items : [
+                    { icon: '⭐', title: 'Feature 1', description: 'Description here' },
+                    { icon: '🎯', title: 'Feature 2', description: 'Description here' },
+                    { icon: '🚀', title: 'Feature 3', description: 'Description here' },
+                  ]).map(it => ({ icon: it.icon || '⭐', title: it.title || 'Feature', description: it.description || 'Description here' })),
+                  bgColor: s.bgColor || '#f9fafb',
+                  textColor: s.textColor || '#111827',
+                }
+              };
+            }
+            if (t === 'footer') {
+              return {
+                id,
+                type: 'footer',
+                props: {
+                  companyName: s.companyName || 'Company Name',
+                  tagline: s.tagline || 'Your company tagline',
+                  links: (Array.isArray(s.links) ? s.links : [
+                    { text: 'Home', url: '#' },
+                    { text: 'About', url: '#' },
+                    { text: 'Contact', url: '#' },
+                  ]).map(l => ({ text: l.text || 'Link', url: l.url || '#' })),
+                  bgColor: s.bgColor || '#1f2937',
+                  textColor: s.textColor || '#f3f4f6',
+                }
+              };
+            }
+            // default to textblock from common fields
+            return {
+              id,
+              type: 'textblock',
+              props: {
+                heading: s.heading || s.title || 'Text Block Heading',
+                content: s.content || s.text || 'Add your content here. This is a flexible text block that you can customize.',
+                bgColor: s.bgColor || '#ffffff',
+                textColor: s.textColor || '#374151',
+                alignment: s.alignment || 'left',
+              }
+            };
+          };
+
           if (payload.layout && Array.isArray(payload.layout.sections)) {
             // convert layout.sections to editor components if they look like components
-            comps = payload.layout.sections.map((s, idx) => ({ id: `${s.type || 'section'}-${idx}`, type: s.type || 'textblock', props: s }));
+            comps = payload.layout.sections.map((s, idx) => normalizeSection(s, idx));
           }
         } catch {
           comps = [];
