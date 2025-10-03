@@ -196,7 +196,7 @@ const FooterComponent = ({ component, onUpdate }) => {
   );
 };
 
-const NavbarComponent = ({ component, onUpdate }) => {
+const NavbarComponent = ({ component, onUpdate, onNavigatePage }) => {
   const { logo, links, bgColor, textColor } = component.props;
 
   const updateLink = (index, field, value) => {
@@ -215,15 +215,233 @@ const NavbarComponent = ({ component, onUpdate }) => {
         />
         <div className="flex gap-6">
           {links.map((link, index) => (
-            <EditableText
+            <span
               key={index}
-              value={link.text}
-              onChange={(newText) => updateLink(index, 'text', newText)}
-              className="hover:opacity-80 transition-opacity font-medium"
-            />
+              className="hover:opacity-80 transition-opacity font-medium cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onNavigatePage && (link.type === 'page' || link.pageName)) {
+                  onNavigatePage(link.pageName || link.text);
+                }
+              }}
+            >
+              {link.text}
+            </span>
           ))}
         </div>
       </div>
+    </div>
+  );
+};
+
+const FAQComponent = ({ component, onUpdate }) => {
+  const { title, items } = component.props;
+  const updateItem = (index, field, value) => {
+    const newItems = [...items];
+    newItems[index][field] = value;
+    onUpdate(component.id, { items: newItems });
+  };
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
+      <div className="space-y-4">
+        {items.map((it, i) => (
+          <div key={i} className="border rounded p-4">
+            <EditableText value={it.question} onChange={(v) => updateItem(i, 'question', v)} className="font-semibold mb-2" />
+            <EditableText value={it.answer} onChange={(v) => updateItem(i, 'answer', v)} className="text-gray-600" multiline />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const GalleryComponent = ({ component, onUpdate }) => {
+  const { title, images, columns } = component.props;
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
+      <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${columns || 3}, minmax(0, 1fr))` }}>
+        {images.map((src, i) => (
+          <img key={i} src={src} alt="gallery" className="w-full h-40 object-cover rounded" />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const NewsletterComponent = ({ component, onUpdate }) => {
+  const { title, description, placeholder, ctaText } = component.props;
+  return (
+    <div className="bg-blue-50 p-8 text-center">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-2" />
+      <EditableText value={description} onChange={(v) => onUpdate(component.id, { description: v })} className="text-gray-600 mb-4" />
+      <div className="flex justify-center gap-2">
+        <input disabled className="px-3 py-2 border rounded w-64" placeholder={placeholder} />
+        <button disabled className="px-4 py-2 bg-blue-600 text-white rounded">{ctaText}</button>
+      </div>
+    </div>
+  );
+};
+
+const SimpleFormComponent = ({ component, onUpdate }) => {
+  const { title, description } = component.props;
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-2xl font-bold mb-2" />
+      {description && (
+        <EditableText value={description} onChange={(v) => onUpdate(component.id, { description: v })} className="text-gray-600 mb-4" />
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input disabled className="border rounded px-3 py-2" placeholder="Field 1" />
+        <input disabled className="border rounded px-3 py-2" placeholder="Field 2" />
+      </div>
+      <button disabled className="mt-4 px-4 py-2 bg-gray-800 text-white rounded">Submit</button>
+    </div>
+  );
+};
+
+const CollectionComponent = ({ component, onUpdate }) => {
+  const { title, items } = component.props;
+  const updateItem = (idx, field, value) => {
+    const newItems = [...items];
+    newItems[idx][field] = value;
+    onUpdate(component.id, { items: newItems });
+  };
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {items.map((it, i) => (
+          <div key={i} className="border rounded p-4">
+            <img src={it.image} alt={it.title} className="w-full h-40 object-cover rounded mb-3" />
+            <EditableText value={it.title} onChange={(v) => updateItem(i, 'title', v)} className="font-semibold" />
+            <EditableText value={it.price} onChange={(v) => updateItem(i, 'price', v)} className="text-gray-600" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TestimonialsComponent = ({ component, onUpdate }) => {
+  const { title, items } = component.props;
+  const updateItem = (idx, field, value) => {
+    const newItems = [...items];
+    newItems[idx][field] = value;
+    onUpdate(component.id, { items: newItems });
+  };
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
+      <div className="grid md:grid-cols-2 gap-6">
+        {items.map((it, i) => (
+          <div key={i} className="border rounded p-4">
+            <EditableText value={it.quote} onChange={(v) => updateItem(i, 'quote', v)} className="italic mb-2" />
+            <EditableText value={it.author} onChange={(v) => updateItem(i, 'author', v)} className="text-gray-600" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PricingComponent = ({ component, onUpdate }) => {
+  const { title, plans } = component.props;
+  const updateFeature = (pi, fi, value) => {
+    const newPlans = [...plans];
+    newPlans[pi].features[fi] = value;
+    onUpdate(component.id, { plans: newPlans });
+  };
+  return (
+    <div className="bg-white p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6 text-center" />
+      <div className="grid md:grid-cols-2 gap-6">
+        {plans.map((p, i) => (
+          <div key={i} className="border rounded p-6 text-center">
+            <EditableText value={p.name} onChange={(v) => {
+              const np = [...plans]; np[i].name = v; onUpdate(component.id, { plans: np });
+            }} className="text-xl font-semibold" />
+            <EditableText value={p.price} onChange={(v) => { const np = [...plans]; np[i].price = v; onUpdate(component.id, { plans: np }); }} className="text-3xl font-bold my-2" />
+            <ul className="text-left space-y-1">
+              {p.features.map((f, fi) => (
+                <li key={fi} className="flex items-start gap-2">
+                  <span>✔</span>
+                  <EditableText value={f} onChange={(v) => updateFeature(i, fi, v)} className="flex-1" />
+                </li>
+              ))}
+            </ul>
+            <button disabled className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Choose</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CTAComponent = ({ component, onUpdate, onNavigatePage }) => {
+  const { heading, subheading, buttonText } = component.props;
+  return (
+    <div className="bg-indigo-600 text-white text-center p-12">
+      <EditableText value={heading} onChange={(v) => onUpdate(component.id, { heading: v })} className="text-4xl font-bold" />
+      <EditableText value={subheading} onChange={(v) => onUpdate(component.id, { subheading: v })} className="opacity-90 mt-2" />
+      <button
+        className="mt-6 bg-white text-indigo-700 px-6 py-3 rounded font-semibold cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          const { linkType, pageName } = component.props;
+          if (onNavigatePage && linkType === 'page' && pageName) onNavigatePage(pageName);
+        }}
+      >
+        {buttonText}
+      </button>
+    </div>
+  );
+};
+
+const DividerComponent = ({ component }) => {
+  const { thickness, color } = component.props;
+  return <div className="my-6" style={{ height: thickness, backgroundColor: color }} />;
+};
+
+const SpacerComponent = ({ component }) => {
+  const { height } = component.props;
+  return <div style={{ height }} />;
+};
+
+const ImageComponent = ({ component, onUpdate }) => {
+  const { src, alt } = component.props;
+  return (
+    <div className="bg-white p-4 text-center">
+      <img src={src} alt={alt} className="mx-auto rounded" />
+      <EditableText value={alt} onChange={(v) => onUpdate(component.id, { alt: v })} className="text-sm text-gray-600 mt-2" />
+    </div>
+  );
+};
+
+const VideoComponent = ({ component }) => {
+  const { url } = component.props;
+  return (
+    <div className="aspect-video">
+      <iframe title="Video" src={url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+    </div>
+  );
+};
+
+const ButtonComponent = ({ component, onUpdate, onNavigatePage }) => {
+  const { text } = component.props;
+  return (
+    <div className="text-center p-4">
+      <button
+        className="px-6 py-3 bg-blue-600 text-white rounded cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          const { linkType, pageName } = component.props;
+          if (onNavigatePage && linkType === 'page' && pageName) onNavigatePage(pageName);
+        }}
+      >
+        {text}
+      </button>
     </div>
   );
 };
@@ -235,6 +453,22 @@ const EditableComponent = ({ component, onUpdate }) => {
     textblock: TextBlockComponent,
     footer: FooterComponent,
     navbar: NavbarComponent,
+    faq: FAQComponent,
+    gallery: GalleryComponent,
+    newsletter: NewsletterComponent,
+    signup: SimpleFormComponent,
+    login: SimpleFormComponent,
+    waitlist: NewsletterComponent,
+    contact: SimpleFormComponent,
+    collection: CollectionComponent,
+    testimonials: TestimonialsComponent,
+    pricing: PricingComponent,
+    cta: CTAComponent,
+    divider: DividerComponent,
+    spacer: SpacerComponent,
+    image: ImageComponent,
+    video: VideoComponent,
+    button: ButtonComponent,
   };
 
   const Component = componentMap[component.type] || TextBlockComponent;

@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import EditableComponent from './EditableComponent';
 
-const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onDuplicate }) => {
+const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onNavigatePage }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: component.id,
   });
@@ -22,7 +22,7 @@ const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onD
         }`}
         onClick={() => onSelect(component)}
       >
-        <EditableComponent component={component} onUpdate={onUpdate} />
+        <EditableComponent component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />
 
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
           <button
@@ -66,6 +66,7 @@ const Canvas = ({
   onUpdateComponent,
   onDeleteComponent,
   onDuplicateComponent,
+  onNavigatePage,
 }) => {
   return (
     <div className="flex-1 bg-gray-50 overflow-y-auto">
@@ -89,6 +90,7 @@ const Canvas = ({
                   onUpdate={onUpdateComponent}
                   onDelete={onDeleteComponent}
                   onDuplicate={onDuplicateComponent}
+                  onNavigatePage={onNavigatePage}
                 />
               ))}
             </div>

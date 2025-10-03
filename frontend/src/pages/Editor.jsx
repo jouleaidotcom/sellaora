@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import PageTabs from '../components/editor/PageTabs';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -11,6 +12,9 @@ const Editor = () => {
   const { themeId } = useParams();
   const navigate = useNavigate();
   const [components, setComponents] = useState([]);
+  const [componentsByPage, setComponentsByPage] = useState({});
+  const [pages, setPages] = useState([]); // [{id,name}]
+  const [currentPage, setCurrentPage] = useState(0);
   const [htmlContent, setHtmlContent] = useState(null);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [history, setHistory] = useState([]);
@@ -46,10 +50,110 @@ const Editor = () => {
 
         // Attempt to use parsed layout -> components, otherwise default to empty
         let comps = [];
+        const pageList = [];
+        const byPage = {};
         try {
-          if (payload.layout && Array.isArray(payload.layout.sections)) {
-            // convert layout.sections to editor components if they look like components
-            comps = payload.layout.sections.map((s, idx) => ({ id: `${s.type || 'section'}-${idx}`, type: s.type || 'textblock', props: s }));
+          const normalizeSection = (s, idx) => {
+            const t = String(s.type || '').toLowerCase();
+            const id = `${t || 'section'}-${idx}`;
+            // Map AI/preview types into editor canonical shapes
+            if (t === 'navbar') {
+              return {
+                id,
+                type: 'navbar',
+                props: {
+                  logo: s.logo || 'Logo',
+                  links: Array.isArray(s.links)
+                    ? s.links.map(l => ({
+                        text: l.text || 'Link',
+                        type: l.type || (l.pageName ? 'page' : 'external'),
+                        pageName: l.pageName || '',
+                        url: l.url || (l.pageName ? '' : '#'),
+                      }))
+                    : [
+                        { text: 'Home', type: 'page', pageName: 'Home' },
+                        { text: 'Products', type: 'external', url: '#' },
+                        { text: 'About', type: 'external', url: '#' },
+                      ],
+                  bgColor: s.bgColor || '#ffffff',
+                  textColor: s.textColor || '#1f2937',
+                }
+              };
+            }
+            if (t === 'hero') {
+              return {
+                id,
+                type: 'hero',
+                props: {
+                  title: s.title || 'New Hero Section',
+                  subtitle: s.subtitle || 'Add your subtitle here',
+                  buttonText: s.buttonText || 'Click Me',
+                  buttonLink: s.buttonLink || '#',
+                  bgColor: s.bgColor || '#3b82f6',
+                  textColor: s.textColor || '#ffffff',
+                  image: s.image || s.imageUrl || '',
+                }
+              };
+            }
+            if (t === 'features' || t === 'featuredproducts') {
+              const items = Array.isArray(s.items) ? s.items : Array.isArray(s.features) ? s.features : [];
+              return {
+                id,
+                type: 'features',
+                props: {
+                  title: s.title || 'Features Section',
+                  items: (items.length ? items : [
+                    { icon: '⭐', title: 'Feature 1', description: 'Description here' },
+                    { icon: '🎯', title: 'Feature 2', description: 'Description here' },
+                    { icon: '🚀', title: 'Feature 3', description: 'Description here' },
+                  ]).map(it => ({ icon: it.icon || '⭐', title: it.title || 'Feature', description: it.description || 'Description here' })),
+                  bgColor: s.bgColor || '#f9fafb',
+                  textColor: s.textColor || '#111827',
+                }
+              };
+            }
+            if (t === 'footer') {
+              return {
+                id,
+                type: 'footer',
+                props: {
+                  companyName: s.companyName || 'Company Name',
+                  tagline: s.tagline || 'Your company tagline',
+                  links: (Array.isArray(s.links) ? s.links : [
+                    { text: 'Home', url: '#' },
+                    { text: 'About', url: '#' },
+                    { text: 'Contact', url: '#' },
+                  ]).map(l => ({ text: l.text || 'Link', url: l.url || '#' })),
+                  bgColor: s.bgColor || '#1f2937',
+                  textColor: s.textColor || '#f3f4f6',
+                }
+              };
+            }
+            // default to textblock from common fields
+            return {
+              id,
+              type: 'textblock',
+              props: {
+                heading: s.heading || s.title || 'Text Block Heading',
+                content: s.content || s.text || 'Add your content here. This is a flexible text block that you can customize.',
+                bgColor: s.bgColor || '#ffffff',
+                textColor: s.textColor || '#374151',
+                alignment: s.alignment || 'left',
+              }
+            };
+          };
+
+          if (payload.layout && Array.isArray(payload.layout.pages)) {
+            payload.layout.pages.forEach((pg, pidx) => {
+              const name = pg.name || `Page ${pidx + 1}`;
+              pageList.push({ id: `page-${pidx}`, name });
+              byPage[name] = Array.isArray(pg.sections) ? pg.sections.map((s, idx) => normalizeSection(s, idx)) : [];
+            });
+          } else if (payload.layout && Array.isArray(payload.layout.sections)) {
+            // Single-page fallback
+            comps = payload.layout.sections.map((s, idx) => normalizeSection(s, idx));
+            pageList.push({ id: 'page-0', name: 'Home' });
+            byPage['Home'] = comps;
           }
         } catch {
           comps = [];
@@ -91,9 +195,23 @@ const Editor = () => {
 
         setHtmlContent(rawHtml);
 
-        setComponents(comps);
-        setHistory([JSON.parse(JSON.stringify(comps))]);
-        setHistoryIndex(0);
+        if (pageList.length) {
+          setPages(pageList);
+          setComponentsByPage(byPage);
+          const initialName = pageList[0].name;
+          const initialComps = byPage[initialName] || [];
+          setComponents(initialComps);
+          setHistory([JSON.parse(JSON.stringify(initialComps))]);
+          setHistoryIndex(0);
+          setCurrentPage(0);
+        } else {
+          setPages([{ id: 'page-0', name: 'Home' }]);
+          setComponentsByPage({ Home: comps });
+          setComponents(comps);
+          setHistory([JSON.parse(JSON.stringify(comps))]);
+          setHistoryIndex(0);
+          setCurrentPage(0);
+        }
       } catch (error) {
         console.error('Load editor failed', error);
         setComponents([]);
@@ -113,6 +231,51 @@ const Editor = () => {
     });
     setHistoryIndex((prev) => prev + 1);
   }, [historyIndex]);
+
+  // Page management
+  const selectPage = (index) => {
+    setCurrentPage(index);
+    const name = pages[index]?.name;
+    const comps = componentsByPage[name] || [];
+    setComponents(comps);
+    setSelectedComponent(null);
+    setHistory([JSON.parse(JSON.stringify(comps))]);
+    setHistoryIndex(0);
+  };
+
+  const addPage = () => {
+    const name = `Page ${pages.length + 1}`;
+    const newPages = [...pages, { id: `page-${Date.now()}`, name }];
+    const newMap = { ...componentsByPage, [name]: [] };
+    setPages(newPages);
+    setComponentsByPage(newMap);
+    selectPage(newPages.length - 1);
+  };
+
+  const renamePage = (index, newName) => {
+    const oldName = pages[index].name;
+    const updatedPages = pages.map((p, i) => (i === index ? { ...p, name: newName } : p));
+    const mapCopy = { ...componentsByPage };
+    mapCopy[newName] = mapCopy[oldName] || [];
+    delete mapCopy[oldName];
+    setPages(updatedPages);
+    setComponentsByPage(mapCopy);
+    if (currentPage === index) {
+      setComponents(mapCopy[newName] || []);
+    }
+  };
+
+  const deletePage = (index) => {
+    if (pages.length <= 1) return;
+    const name = pages[index].name;
+    const updatedPages = pages.filter((_, i) => i !== index);
+    const mapCopy = { ...componentsByPage };
+    delete mapCopy[name];
+    setPages(updatedPages);
+    setComponentsByPage(mapCopy);
+    const newIdx = Math.max(0, index - 1);
+    selectPage(newIdx);
+  };
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -210,6 +373,145 @@ const Editor = () => {
           textColor: '#1f2937',
         },
       },
+      // New components
+      faq: {
+        id,
+        type: 'faq',
+        props: {
+          title: 'Frequently Asked Questions',
+          items: [
+            { question: 'What is your return policy?', answer: '30 days return policy.' },
+            { question: 'Do you ship internationally?', answer: 'Yes, worldwide.' },
+          ],
+        },
+      },
+      gallery: {
+        id,
+        type: 'gallery',
+        props: {
+          title: 'Image Gallery',
+          columns: 3,
+          images: [
+            'https://picsum.photos/seed/1/400/300',
+            'https://picsum.photos/seed/2/400/300',
+            'https://picsum.photos/seed/3/400/300',
+          ],
+        },
+      },
+      newsletter: {
+        id,
+        type: 'newsletter',
+        props: {
+          title: 'Join our newsletter',
+          description: 'Get updates in your inbox.',
+          placeholder: 'you@example.com',
+          ctaText: 'Subscribe',
+        },
+      },
+      signup: {
+        id,
+        type: 'signup',
+        props: {
+          title: 'Create an account',
+          description: 'Sign up to start shopping.',
+        },
+      },
+      login: {
+        id,
+        type: 'login',
+        props: {
+          title: 'Welcome back',
+        },
+      },
+      waitlist: {
+        id,
+        type: 'waitlist',
+        props: {
+          title: 'Join the waitlist',
+          description: 'Be the first to know.',
+          placeholder: 'you@example.com',
+          ctaText: 'Notify me',
+        },
+      },
+      contact: {
+        id,
+        type: 'contact',
+        props: {
+          title: 'Contact us',
+          description: 'We usually reply within 24 hours.',
+        },
+      },
+      collection: {
+        id,
+        type: 'collection',
+        props: {
+          title: 'Our Collection',
+          items: [
+            { title: 'Product 1', price: '$19', image: 'https://picsum.photos/seed/p1/300/200' },
+            { title: 'Product 2', price: '$29', image: 'https://picsum.photos/seed/p2/300/200' },
+            { title: 'Product 3', price: '$39', image: 'https://picsum.photos/seed/p3/300/200' },
+          ],
+        },
+      },
+      testimonials: {
+        id,
+        type: 'testimonials',
+        props: {
+          title: 'What customers say',
+          items: [
+            { quote: 'Amazing products!', author: 'Alex' },
+            { quote: 'Great support and fast delivery.', author: 'Sam' },
+          ],
+        },
+      },
+      pricing: {
+        id,
+        type: 'pricing',
+        props: {
+          title: 'Pricing',
+          plans: [
+            { name: 'Basic', price: '$9', features: ['Feature A', 'Feature B'] },
+            { name: 'Pro', price: '$29', features: ['Everything in Basic', 'Feature C'] },
+          ],
+        },
+      },
+      cta: {
+        id,
+        type: 'cta',
+        props: {
+          heading: 'Ready to get started?',
+          subheading: 'Join us today',
+          buttonText: 'Get started',
+          linkType: 'external',
+          buttonLink: '#',
+          pageName: '',
+        },
+      },
+      divider: {
+        id,
+        type: 'divider',
+        props: { thickness: 2, color: '#e5e7eb' },
+      },
+      spacer: {
+        id,
+        type: 'spacer',
+        props: { height: 32 },
+      },
+      image: {
+        id,
+        type: 'image',
+        props: { src: 'https://picsum.photos/seed/solo/800/400', alt: 'Image' },
+      },
+      video: {
+        id,
+        type: 'video',
+        props: { url: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
+      },
+      button: {
+        id,
+        type: 'button',
+        props: { text: 'Click me', linkType: 'external', link: '#', pageName: '', variant: 'primary' },
+      },
     };
     return templates[type] || templates.textblock;
   };
@@ -271,8 +573,15 @@ const Editor = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Build layout from components
-      const layout = { sections: components.map((c) => ({ type: c.type, ...c.props })) };
+      // Build layout from pages
+      let layout;
+      if (pages.length > 1) {
+        layout = {
+          pages: pages.map((p) => ({ name: p.name, sections: (componentsByPage[p.name] || []).map((c) => ({ type: c.type, ...c.props })) })),
+        };
+      } else {
+        layout = { sections: components.map((c) => ({ type: c.type, ...c.props })) };
+      }
       const storeId = localStorage.getItem('editorStoreId');
       if (!storeId) throw new Error('Missing storeId for save');
 
@@ -311,6 +620,15 @@ const Editor = () => {
         isSaving={isSaving}
       />
 
+      <PageTabs
+        pages={pages}
+        currentIndex={currentPage}
+        onSelect={selectPage}
+        onAdd={addPage}
+        onRename={renamePage}
+        onDelete={deletePage}
+      />
+
       <div className="flex-1 flex overflow-hidden">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <ComponentLibrary />
@@ -331,22 +649,37 @@ const Editor = () => {
             </div>
           ) : (
             <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-              <Canvas
+          <Canvas
                 components={components}
                 selectedComponent={selectedComponent}
                 onSelectComponent={setSelectedComponent}
                 onUpdateComponent={updateComponent}
                 onDeleteComponent={deleteComponent}
                 onDuplicateComponent={duplicateComponent}
+                onNavigatePage={(name) => {
+                  if (!name) return;
+                  const idx = pages.findIndex((p) => p.name === name);
+                  if (idx >= 0) {
+                    selectPage(idx);
+                  } else {
+                    // create the page if it doesn't exist
+                    const newPages = [...pages, { id: `page-${Date.now()}`, name }];
+                    const newMap = { ...componentsByPage, [name]: [] };
+                    setPages(newPages);
+                    setComponentsByPage(newMap);
+                    setTimeout(() => selectPage(newPages.length - 1), 0);
+                  }
+                }}
               />
             </SortableContext>
           )}
 
           <PropertiesPanel
-            selectedComponent={selectedComponent}
-            onUpdateComponent={updateComponent}
-            onClose={() => setSelectedComponent(null)}
-          />
+                selectedComponent={selectedComponent}
+                onUpdateComponent={updateComponent}
+                onClose={() => setSelectedComponent(null)}
+                pages={pages}
+              />
         </DndContext>
       </div>
     </div>

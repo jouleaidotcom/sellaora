@@ -1,5 +1,18 @@
 import React from 'react';
 
+const Navbar = ({ logo, links = [], bgColor = '#ffffff', textColor = '#1f2937' }) => (
+  <div className="mb-4 rounded border" style={{ backgroundColor: bgColor, color: textColor }}>
+    <div className="px-4 py-3 flex items-center gap-6">
+      <div className="font-bold text-lg">{logo || 'Logo'}</div>
+      <div className="flex gap-4 text-sm">
+        {links.map((l, i) => (
+          <span key={i} className="opacity-80 hover:opacity-100 cursor-default">{l.text || 'Link'}</span>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const HeroSection = ({ title, subtitle, imageUrl }) => (
   <div className="relative w-full h-56 md:h-72 rounded-lg overflow-hidden mb-4">
     {imageUrl ? (
@@ -14,24 +27,39 @@ const HeroSection = ({ title, subtitle, imageUrl }) => (
   </div>
 );
 
-const TextBlock = ({ content }) => (
+const TextBlock = ({ content, heading }) => (
   <div className="bg-white rounded-lg border p-4 mb-4">
+    {heading && <h3 className="text-lg font-semibold mb-2">{heading}</h3>}
     <p className="text-gray-700 whitespace-pre-wrap">{content || 'Text content'}</p>
   </div>
 );
 
-const FeaturedProducts = ({ productIds }) => (
+const Features = ({ title, items = [] }) => (
   <div className="bg-white rounded-lg border p-4 mb-4">
-    <h3 className="text-lg font-semibold mb-2">Featured Products</h3>
-    {Array.isArray(productIds) && productIds.length > 0 ? (
-      <div className="flex flex-wrap gap-2">
-        {productIds.map((id) => (
-          <span key={id} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded">{id}</span>
+    <h3 className="text-lg font-semibold mb-3">{title || 'Features'}</h3>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {items.map((it, j) => (
+        <div key={j} className="p-3 rounded border">
+          <div className="text-2xl mb-2">{it.icon || '⭐'}</div>
+          <div className="font-semibold">{it.title || 'Feature'}</div>
+          <div className="text-sm text-gray-600">{it.description || ''}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const Footer = ({ companyName, tagline, links = [], bgColor = '#1f2937', textColor = '#f3f4f6' }) => (
+  <div className="rounded border p-4 mb-4" style={{ backgroundColor: bgColor, color: textColor }}>
+    <div className="text-center">
+      <div className="font-semibold">{companyName || 'Company Name'}</div>
+      {tagline && <div className="text-sm opacity-80">{tagline}</div>}
+      <div className="flex gap-4 justify-center mt-3 flex-wrap text-sm">
+        {links.map((l, i) => (
+          <span key={i} className="hover:opacity-90 cursor-default">{l.text || 'Link'}</span>
         ))}
       </div>
-    ) : (
-      <p className="text-gray-500 text-sm">No featured products selected</p>
-    )}
+    </div>
   </div>
 );
 
@@ -56,15 +84,43 @@ const StorePreview = ({ theme, layout }) => {
         </div>
       )}
 
-      {(layout?.sections || []).map((section, idx) => {
-        if (section.type === 'hero') {
-          return <HeroSection key={idx} title={section.title} subtitle={section.subtitle} imageUrl={section.imageUrl} />;
+      {(
+        Array.isArray(layout?.pages)
+          ? (layout.pages[0]?.sections || [])
+          : (layout?.sections || [])
+      ).map((section, idx) => {
+        const type = String(section.type || '').toLowerCase();
+        if (type === 'navbar') {
+          return (
+            <Navbar
+              key={idx}
+              logo={section.logo}
+              links={section.links}
+              bgColor={section.bgColor}
+              textColor={section.textColor}
+            />
+          );
         }
-        if (section.type === 'featuredProducts') {
-          return <FeaturedProducts key={idx} productIds={section.productIds} />;
+        if (type === 'hero') {
+          return <HeroSection key={idx} title={section.title} subtitle={section.subtitle} imageUrl={section.image || section.imageUrl} />;
         }
-        if (section.type === 'textBlock') {
-          return <TextBlock key={idx} content={section.content} />;
+        if (type === 'features' || type === 'featuredproducts') {
+          return <Features key={idx} title={section.title} items={section.items || []} />;
+        }
+        if (type === 'textblock') {
+          return <TextBlock key={idx} heading={section.heading} content={section.content} />;
+        }
+        if (type === 'footer') {
+          return (
+            <Footer
+              key={idx}
+              companyName={section.companyName}
+              tagline={section.tagline}
+              links={section.links}
+              bgColor={section.bgColor}
+              textColor={section.textColor}
+            />
+          );
         }
         return (
           <div key={idx} className="bg-white rounded-lg border p-4 mb-4 text-sm text-gray-500">
