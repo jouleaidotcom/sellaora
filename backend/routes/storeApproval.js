@@ -30,13 +30,16 @@ router.get('/:storeId/editor', authMiddleware, ownerCheckMiddleware((req) => req
 
     // Build editor payload expected by frontend
     // Derive pages list from layout.pages if present
-    const layoutPages = Array.isArray(store.layout?.pages) ? store.layout.pages.map(p => p.name || 'Page') : null;
+    const hasPages = Array.isArray(store.layout?.pages);
+    const layoutPages = hasPages ? store.layout.pages.map(p => p.name || 'Page') : null;
 
     const payload = {
       storeId: store._id.toString(),
       themeId: store.chosenThemeId || store.theme?.id || null,
-      // If theme contains raw HTML, use it; otherwise derive minimal htmlContent from layout (first page when pages exist)
-      htmlContent: store.theme?.htmlContent || (store.layout ? `<div id="store-root">${JSON.stringify(store.layout.pages ? store.layout.pages[0] : store.layout)}</div>` : '<div></div>'),
+      // IMPORTANT: Provide full layout to the editor so it can hydrate multi-page structures.
+      // Set htmlContent to null when layout exists so the editor does not fall back to iframe preview.
+      layout: store.layout || null,
+      htmlContent: store.layout ? null : (store.theme?.htmlContent || '<div></div>'),
       pages: layoutPages || (store.pages && Array.isArray(store.pages) ? store.pages : ['Home']),
       // Include full store and products for legacy StoreEditor consumers
       store,

@@ -287,23 +287,28 @@ const Editor = () => {
 
     if (!over) return;
 
+    // Dropping a library item anywhere on the canvas (including when empty)
     if (active.id.startsWith('library-')) {
       const componentType = active.id.replace('library-', '');
       const newComponent = createNewComponent(componentType);
       const newComponents = [...components, newComponent];
       setComponents(newComponents);
+      // keep page map in sync
+      const pageName = pages[currentPage]?.name;
+      if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
       saveToHistory(newComponents);
       return;
     }
 
+    // Reordering existing items within the page
     if (active.id !== over.id) {
-      setComponents((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newComponents = arrayMove(items, oldIndex, newIndex);
-        saveToHistory(newComponents);
-        return newComponents;
-      });
+      const oldIndex = components.findIndex((item) => item.id === active.id);
+      const newIndex = components.findIndex((item) => item.id === over.id);
+      const newComponents = arrayMove(components, oldIndex, newIndex);
+      setComponents(newComponents);
+      const pageName = pages[currentPage]?.name;
+      if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
+      saveToHistory(newComponents);
     }
   };
 
@@ -526,6 +531,9 @@ const Editor = () => {
       comp.id === id ? { ...comp, props: { ...comp.props, ...newProps } } : comp
     );
     setComponents(newComponents);
+    // keep page map in sync
+    const pageName = pages[currentPage]?.name;
+    if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
     saveToHistory(newComponents);
     // If the updated component is currently selected, update the selectedComponent state
     if (selectedComponent && selectedComponent.id === id) {
@@ -537,6 +545,8 @@ const Editor = () => {
   const deleteComponent = (id) => {
     const newComponents = components.filter((comp) => comp.id !== id);
     setComponents(newComponents);
+    const pageName = pages[currentPage]?.name;
+    if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
     saveToHistory(newComponents);
     if (selectedComponent?.id === id) {
       setSelectedComponent(null);
@@ -557,21 +567,31 @@ const Editor = () => {
         ...components.slice(index + 1),
       ];
       setComponents(newComponents);
+      const pageName = pages[currentPage]?.name;
+      if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
       saveToHistory(newComponents);
     }
   };
 
   const handleUndo = () => {
     if (historyIndex > 0) {
-      setHistoryIndex((prev) => prev - 1);
-      setComponents(history[historyIndex - 1]);
+      const nextIndex = historyIndex - 1;
+      setHistoryIndex(nextIndex);
+      const newComponents = history[nextIndex - 0];
+      setComponents(newComponents);
+      const pageName = pages[currentPage]?.name;
+      if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
     }
   };
 
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex((prev) => prev + 1);
-      setComponents(history[historyIndex + 1]);
+      const nextIndex = historyIndex + 1;
+      setHistoryIndex(nextIndex);
+      const newComponents = history[nextIndex];
+      setComponents(newComponents);
+      const pageName = pages[currentPage]?.name;
+      if (pageName) setComponentsByPage((prev) => ({ ...prev, [pageName]: newComponents }));
     }
   };
 
@@ -581,8 +601,15 @@ const Editor = () => {
       // Build layout from pages
       let layout;
       if (pages.length > 1) {
+        // Ensure current page edits are reflected in the map before saving
+        const currentName = pages[currentPage]?.name;
+        if (currentName) {
+          // write-through latest components for current page
+          // Note: using functional update to avoid race conditions
+          setComponentsByPage((prev) => ({ ...prev, [currentName]: components }));
+        }
         layout = {
-          pages: pages.map((p) => ({ name: p.name, sections: (componentsByPage[p.name] || []).map((c) => ({ type: c.type, ...c.props })) })),
+          pages: pages.map((p) => ({ name: p.name, sections: (componentsByPage[p.name] || (p.name === currentName ? components : [])).map((c) => ({ type: c.type, ...c.props })) })),
         };
       } else {
         layout = { sections: components.map((c) => ({ type: c.type, ...c.props })) };
