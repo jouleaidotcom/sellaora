@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import PageTabs from '../components/editor/PageTabs';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import ComponentLibrary from '../components/editor/ComponentLibrary';
@@ -22,6 +22,8 @@ const Editor = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [productList, setProductList] = useState([]);
+  const location = useLocation();
+  const [storeName, setStoreName] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -655,6 +657,7 @@ const Editor = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <TopBar
+        storeName={location.state?.storeName || storeName}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSave={handleSave}
