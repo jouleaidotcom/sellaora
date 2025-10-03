@@ -38,6 +38,8 @@ router.get('/:storeId/editor', authMiddleware, ownerCheckMiddleware((req) => req
       // If theme contains raw HTML, use it; otherwise derive minimal htmlContent from layout (first page when pages exist)
       htmlContent: store.theme?.htmlContent || (store.layout ? `<div id="store-root">${JSON.stringify(store.layout.pages ? store.layout.pages[0] : store.layout)}</div>` : '<div></div>'),
       pages: layoutPages || (store.pages && Array.isArray(store.pages) ? store.pages : ['Home']),
+      // Include full store and products for legacy StoreEditor consumers
+      store,
       products: products || []
     };
 
