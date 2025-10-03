@@ -42,10 +42,12 @@ const Sidebar = ({ store, products, onChange, onSave }) => {
       <div className="p-4 overflow-auto flex-1">
         {activeTab==='pages' && (
           <div className="space-y-3">
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
+              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('navbar')}>Add Navbar</button>
               <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('hero')}>Add Hero</button>
-              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('featuredProducts')}>Add Featured</button>
-              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('text')}>Add Text</button>
+              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('features')}>Add Features</button>
+              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('textblock')}>Add Text</button>
+              <button className="px-3 py-1 bg-gray-100 rounded" onClick={() => addSection('footer')}>Add Footer</button>
             </div>
             <div className="space-y-2">
               {(store?.layout?.sections || []).map((sec, i) => (
@@ -58,10 +60,10 @@ const Sidebar = ({ store, products, onChange, onSave }) => {
                       <button className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded" onClick={() => removeSection(i)}>Remove</button>
                     </div>
                   </div>
-                  {sec.type==='text' && (
+                  {(sec.type==='text' || sec.type==='textblock') && (
                     <div className="mt-2 space-y-2">
                       <input className="w-full border px-2 py-1 rounded" placeholder="Heading" value={sec.heading||''} onChange={(e)=>updateSectionField(i,'heading',e.target.value)} />
-                      <textarea className="w-full border px-2 py-1 rounded" rows={3} placeholder="Body" value={sec.body||''} onChange={(e)=>updateSectionField(i,'body',e.target.value)} />
+                      <textarea className="w-full border px-2 py-1 rounded" rows={3} placeholder="Body" value={sec.body || sec.content || ''} onChange={(e)=>updateSectionField(i, sec.type==='text' ? 'body' : 'content', e.target.value)} />
                     </div>
                   )}
                   {sec.type==='hero' && (
@@ -109,6 +111,10 @@ const Sidebar = ({ store, products, onChange, onSave }) => {
 const defaultSection = (type) => {
   if (type==='hero') return { type: 'hero', title: 'Welcome', subtitle: 'Your subtitle' };
   if (type==='featuredProducts') return { type: 'featuredProducts', productIds: [] };
+  if (type==='features') return { type: 'features', title: 'Why choose us', items: [ { icon:'⭐', title:'Quality', description:'Top quality' }, { icon:'🚀', title:'Fast', description:'Quick delivery' }, { icon:'💬', title:'Support', description:'We help' } ] };
+  if (type==='navbar') return { type: 'navbar', logo: 'My Store', links: [ { text:'Home', type:'page', pageName:'Home' }, { text:'Products', type:'external', url:'#' } ] };
+  if (type==='footer') return { type: 'footer', companyName:'My Store Inc.', tagline:'We care', links:[ { text:'Home', url:'#' } ] };
+  if (type==='textblock') return { type: 'textblock', heading: 'Heading', content: 'Write something here...' };
   return { type: 'text', heading: 'Heading', body: 'Write something here...' };
 };
 

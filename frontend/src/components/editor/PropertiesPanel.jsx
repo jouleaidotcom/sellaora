@@ -1,4 +1,4 @@
-const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onClose, pages = [] }) => {
+const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteComponent, onDuplicateComponent, onClose, pages = [], products = [] }) => {
   if (!selectedComponent) {
     return (
       <div className="w-80 bg-white border-l border-gray-200 p-6 flex-shrink-0">
@@ -351,6 +351,34 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onClose, pages 
   const renderCollectionProperties = () => (
     <>
       {renderTextInput('Title', props.title, 'title')}
+
+      {/* Add from Products */}
+      <div className="mb-4 p-3 bg-gray-50 rounded border">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-gray-700">Add products</label>
+          <span className="text-xs text-gray-500">{products.length} available</span>
+        </div>
+        <div className="max-h-40 overflow-auto space-y-2">
+          {products.map((p) => (
+            <div key={p._id} className="flex items-center justify-between text-sm">
+              <div className="truncate">{p.name}</div>
+              <button
+                onClick={() => {
+                  const template = { productId: p._id, title: p.name, price: p.price ? `$${p.price}` : '', image: p.image || '' };
+                  addArrayItem('items', template);
+                }}
+                className="px-2 py-1 text-xs bg-blue-600 text-white rounded"
+              >
+                Add
+              </button>
+            </div>
+          ))}
+          {products.length === 0 && (
+            <div className="text-xs text-gray-500">No products yet. Add them from Dashboard → Products.</div>
+          )}
+        </div>
+      </div>
+
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
         {props.items.map((item, index) => (
@@ -562,12 +590,32 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onClose, pages 
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900">Properties</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedComponent && (
+              <>
+                <button
+                  onClick={() => onDuplicateComponent && onDuplicateComponent(selectedComponent.id)}
+                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                  title="Duplicate"
+                >
+                  Copy
+                </button>
+                <button
+                  onClick={() => onDeleteComponent && onDeleteComponent(selectedComponent.id)}
+                  className="text-xs px-2 py-1 bg-red-600 text-white rounded"
+                  title="Delete"
+                >
+                  Delete
+                </button>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-xl"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">

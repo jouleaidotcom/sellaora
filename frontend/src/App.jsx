@@ -9,7 +9,6 @@ import EditProduct from './pages/EditProduct'
 import Editor from './pages/Editor'
 import StoreChatbox from './pages/dashboard/StoreChatbox'
 import StoreApproval from './pages/dashboard/StoreApproval'
-import StoreEditor from './pages/dashboard/StoreEditor'
 import ProtectedRoute from './components/ProtectedRoute'
 import { getAuthToken } from './utils/api'
 
@@ -149,7 +148,7 @@ function App() {
           path="/dashboard/store/:storeId/editor" 
           element={
             <ProtectedRoute>
-              <StoreEditor />
+              <Editor />
             </ProtectedRoute>
           } 
         />

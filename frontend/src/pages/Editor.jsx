@@ -20,6 +20,8 @@ const Editor = () => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [productList, setProductList] = useState([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -47,6 +49,8 @@ const Editor = () => {
         if (!res.ok) throw new Error('Failed to fetch editor data');
         const body = await res.json();
         const payload = body.data;
+        const incomingProducts = Array.isArray(payload.products) ? payload.products : [];
+        setProductList(incomingProducts);
 
         // Attempt to use parsed layout -> components, otherwise default to empty
         let comps = [];
@@ -230,6 +234,7 @@ const Editor = () => {
       return newHistory;
     });
     setHistoryIndex((prev) => prev + 1);
+    setIsDirty(true);
   }, [historyIndex]);
 
   // Page management
@@ -593,6 +598,7 @@ const Editor = () => {
       if (!resp.ok) throw new Error('Save failed');
       const data = await resp.json();
       console.log('Save response', data);
+      setIsDirty(false);
       alert('Theme saved successfully!');
     } catch (error) {
       console.error('Save failed:', error);
@@ -603,10 +609,21 @@ const Editor = () => {
   };
 
   const handleExit = () => {
-    if (window.confirm('Are you sure you want to exit? Unsaved changes will be lost.')) {
+    if (!isDirty || window.confirm('Are you sure you want to exit? Unsaved changes will be lost.')) {
       navigate('/dashboard');
     }
   };
+
+  // Warn on browser/tab close when there are unsaved changes
+  useEffect(() => {
+    const handler = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
@@ -677,8 +694,11 @@ const Editor = () => {
           <PropertiesPanel
                 selectedComponent={selectedComponent}
                 onUpdateComponent={updateComponent}
+                onDeleteComponent={deleteComponent}
+                onDuplicateComponent={duplicateComponent}
                 onClose={() => setSelectedComponent(null)}
                 pages={pages}
+                products={productList}
               />
         </DndContext>
       </div>

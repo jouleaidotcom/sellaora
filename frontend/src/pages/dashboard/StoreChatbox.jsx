@@ -104,7 +104,7 @@ const StoreChatbox = () => {
                   await storeAPI.chooseTheme(storeId, chosenThemeId);
                   // store the storeId so editor can fetch editor data
                   localStorage.setItem('editorStoreId', storeId);
-                  // redirect to editor page
+                  // Open the drag-and-drop Designer (uses editorStoreId under the hood)
                   navigate(`/editor/${chosenThemeId}`);
                 } catch (e) {
                   console.error('Choose theme failed', e);

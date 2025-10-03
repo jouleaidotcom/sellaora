@@ -15,45 +15,14 @@ const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onD
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div ref={setNodeRef} style={style} className="relative group" {...listeners} {...attributes}>
       <div
         className={`relative ${
           isSelected ? 'ring-4 ring-blue-500 ring-opacity-50' : 'hover:ring-2 hover:ring-blue-300'
         }`}
         onClick={() => onSelect(component)}
       >
-        <EditableComponent component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />
-
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-          <button
-            {...listeners}
-            {...attributes}
-            className="bg-gray-800 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            ↕️ Move
-          </button>
-          <button
-            className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDuplicate(component.id);
-            }}
-          >
-            📋 Copy
-          </button>
-          <button
-            className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm('Delete this component?')) {
-                onDelete(component.id);
-              }
-            }}
-          >
-            🗑️ Delete
-          </button>
-        </div>
+        <EditableComponent component={component} onUpdate={onUpdate} />
       </div>
     </div>
   );
