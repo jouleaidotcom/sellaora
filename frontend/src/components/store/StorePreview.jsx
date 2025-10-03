@@ -84,7 +84,11 @@ const StorePreview = ({ theme, layout }) => {
         </div>
       )}
 
-      {(layout?.sections || []).map((section, idx) => {
+      {(
+        Array.isArray(layout?.pages)
+          ? (layout.pages[0]?.sections || [])
+          : (layout?.sections || [])
+      ).map((section, idx) => {
         const type = String(section.type || '').toLowerCase();
         if (type === 'navbar') {
           return (

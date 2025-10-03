@@ -29,12 +29,15 @@ router.get('/:storeId/editor', authMiddleware, ownerCheckMiddleware((req) => req
     const products = await Product.find({ storeId: req.params.storeId }).sort({ createdAt: -1 });
 
     // Build editor payload expected by frontend
+    // Derive pages list from layout.pages if present
+    const layoutPages = Array.isArray(store.layout?.pages) ? store.layout.pages.map(p => p.name || 'Page') : null;
+
     const payload = {
       storeId: store._id.toString(),
       themeId: store.chosenThemeId || store.theme?.id || null,
-      // If theme contains raw HTML, use it; otherwise derive minimal htmlContent from layout
-      htmlContent: store.theme?.htmlContent || (store.layout ? `<div id="store-root">${JSON.stringify(store.layout)}</div>` : '<div></div>'),
-      pages: (store.pages && Array.isArray(store.pages)) ? store.pages : ['Home'],
+      // If theme contains raw HTML, use it; otherwise derive minimal htmlContent from layout (first page when pages exist)
+      htmlContent: store.theme?.htmlContent || (store.layout ? `<div id="store-root">${JSON.stringify(store.layout.pages ? store.layout.pages[0] : store.layout)}</div>` : '<div></div>'),
+      pages: layoutPages || (store.pages && Array.isArray(store.pages) ? store.pages : ['Home']),
       products: products || []
     };
 

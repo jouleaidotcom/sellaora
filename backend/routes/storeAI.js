@@ -86,6 +86,13 @@ function normalizeLayout(layout) {
       continue;
     }
 
+    // Pass-through for additional editor-supported types with minimal normalization
+    const passthroughTypes = ['faq','gallery','newsletter','signup','login','waitlist','contact','collection','testimonials','pricing','cta','divider','spacer','image','video','button'];
+    if (passthroughTypes.includes(type)) {
+      out.sections.push({ type, ...raw });
+      continue;
+    }
+
     // Default to textblock, map common fields
     out.sections.push({
       type: 'textblock',

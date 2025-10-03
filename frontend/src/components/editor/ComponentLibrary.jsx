@@ -27,6 +27,23 @@ const ComponentLibrary = () => {
     { type: 'features', icon: '⭐', label: 'Features' },
     { type: 'textblock', icon: '📝', label: 'Text Block' },
     { type: 'footer', icon: '📄', label: 'Footer' },
+    // New components
+    { type: 'faq', icon: '❓', label: 'FAQ' },
+    { type: 'gallery', icon: '🖼️', label: 'Image Gallery' },
+    { type: 'newsletter', icon: '📬', label: 'Newsletter' },
+    { type: 'signup', icon: '🧑‍💻', label: 'Sign Up' },
+    { type: 'login', icon: '🔐', label: 'Login' },
+    { type: 'waitlist', icon: '⏳', label: 'Waitlist' },
+    { type: 'contact', icon: '✉️', label: 'Contact' },
+    { type: 'collection', icon: '🛍️', label: 'Collection Grid' },
+    { type: 'testimonials', icon: '💬', label: 'Testimonials' },
+    { type: 'pricing', icon: '💲', label: 'Pricing' },
+    { type: 'cta', icon: '📣', label: 'Call to Action' },
+    { type: 'divider', icon: '➖', label: 'Divider' },
+    { type: 'spacer', icon: '⬜', label: 'Spacer' },
+    { type: 'image', icon: '🖼️', label: 'Image' },
+    { type: 'video', icon: '🎞️', label: 'Video' },
+    { type: 'button', icon: '🔘', label: 'Button' },
   ];
 
   return (
