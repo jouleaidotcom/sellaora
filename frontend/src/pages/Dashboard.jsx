@@ -75,6 +75,7 @@ const Dashboard = () => {
         setNewStore({ storeName: '', domain: '', description: '' });
         setShowCreateForm(false);
         navigate(`/dashboard/store/${created._id}/chatbox`);
+        navigate(`/editor/${created._id}`, {state : {storeName: created.storeName}});
       } else {
         setError('Failed to create store');
       }
