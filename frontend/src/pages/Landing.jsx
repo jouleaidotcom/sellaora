@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import JoinCommunity from '../components/JoinCommunity'
+import FAQ from '../components/FAQ'
 
 export default function Landing() {
   return (
@@ -214,6 +215,9 @@ export default function Landing() {
 
       {/* Community Section */}
       <JoinCommunity />
+
+      {/* FAQ Section */}
+      <FAQ />
 
       {/* Footer */}
       <footer className="border-t border-neutral-800">
