@@ -97,26 +97,22 @@ async function deployToVercel(buildDir, storeName, domain) {
     console.log('📦 Files to deploy:', vercelFiles.length);
     console.log('');
     
-    // Sanitize project name for Vercel requirements
+    // Choose a stable project name so subsequent publishes go to the same URL
+    // Prefer the store domain (unique) and fall back to storeName
+    const preferred = (domain || storeName || 'store');
+
+    // Sanitize name for Vercel requirements
     // Project names must be lowercase, can include letters, digits, '.', '_', '-'
-    // Cannot contain '---' sequence, max 100 characters
-    const sanitizedName = storeName
+    const finalName = preferred
       .toLowerCase()
-      .replace(/[^a-z0-9._-]/g, '-')  // Replace invalid chars with dash
-      .replace(/-+/g, '-')           // Replace multiple dashes with single dash
-      .replace(/^-+|-+$/g, '')       // Remove leading/trailing dashes
-      .replace(/---+/g, '--')        // Prevent triple dash sequences
-      .substring(0, 100);            // Limit to 100 characters
-    
-    // Ensure name is not empty and doesn't end with dash
-    const baseName = sanitizedName || 'store';
-    
-    // Add timestamp to avoid cached Vercel project settings that force React builds
-    const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
-    const finalName = `${baseName}-${timestamp}`;
-    
-    console.log(`📝 Project name with timestamp: "${storeName}" -> "${finalName}" (avoids cached settings)`);
-    
+      .replace(/[^a-z0-9._-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/---+/g, '--')
+      .substring(0, 100) || 'store';
+
+    console.log(`📝 Using stable Vercel project name: "${finalName}"`);
+
     // Create deployment payload
     const deploymentPayload = {
       name: finalName,
@@ -142,7 +138,7 @@ async function deployToVercel(buildDir, storeName, domain) {
     console.log(`✅ Deployment created with ID: ${deployment.id}`);
     
     // Wait for deployment to be ready
-    const deploymentUrl = await waitForDeployment(deployment.id);
+    const deploymentUrl = await waitForDeployment(deployment.id, finalName);
     
     console.log(`🌐 Site deployed successfully: https://${deploymentUrl}`);
     
@@ -196,7 +192,7 @@ async function getAllFiles(dirPath, files = []) {
  * @param {string} deploymentId - Vercel deployment ID
  * @returns {Promise<string>} - Deployment URL
  */
-async function waitForDeployment(deploymentId, maxAttempts = 30) {
+async function waitForDeployment(deploymentId, stableName, maxAttempts = 30) {
   console.log('⏳ Waiting for deployment to be ready...');
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -227,7 +223,8 @@ async function waitForDeployment(deploymentId, maxAttempts = 30) {
       const state = deployment.state || deployment.readyState || deployment.status;
       
       if (state === 'READY' || state === 'ready') {
-        const finalUrl = deployment.url || deployment.alias?.[0] || `${deploymentId}.vercel.app`;
+        // Prefer the stable alias when available, then fall back to project domain
+        const finalUrl = deployment.alias?.[0] || `${stableName}.vercel.app` || deployment.url || `${deploymentId}.vercel.app`;
         console.log(`🎉 Deployment ready! URL: ${finalUrl}`);
         return finalUrl;
       } else if (state === 'ERROR' || state === 'error' || state === 'FAILED') {
