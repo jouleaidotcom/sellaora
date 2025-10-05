@@ -325,7 +325,7 @@ const Dashboard = () => {
               <div 
                 key={store._id} 
                 className="group bg-neutral-900/50 border border-neutral-800 hover:border-neutral-700 rounded-lg p-5 transition-all cursor-pointer"
-                onClick={() => navigate(`/dashboard/store/${store._id}/chatbox`)}
+                onClick={() => navigate(`/dashboard/store/${store._id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -344,7 +344,7 @@ const Dashboard = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/dashboard/store/${store._id}/chatbox`);
+                      navigate(`/dashboard/store/${store._id}`);
                     }}
                     className="text-neutral-500 hover:text-neutral-300"
                   >
