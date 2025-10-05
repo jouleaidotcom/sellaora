@@ -9,7 +9,7 @@ const router = express.Router();
 // @access  Private
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { storeName, domain, description } = req.body;
+    const { storeName, domain, description, currency, locale } = req.body;
 
     // Validation
     if (!storeName || !domain) {
@@ -33,7 +33,9 @@ router.post('/', authMiddleware, async (req, res) => {
       ownerId: req.user._id,
       storeName,
       domain,
-      description: description || ''
+      description: description || '',
+      currency: currency || 'USD',
+      locale: locale || 'en-US'
     });
 
     await store.save();
@@ -135,7 +137,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // @access  Private (only store owner)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { storeName, domain, description, isActive } = req.body;
+    const { storeName, domain, description, isActive, currency, locale } = req.body;
     
     // Find store
     const store = await Store.findById(req.params.id);
@@ -171,6 +173,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (domain) updateData.domain = domain;
     if (description !== undefined) updateData.description = description;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (currency) updateData.currency = currency;
+    if (locale) updateData.locale = locale;
 
     const updatedStore = await Store.findByIdAndUpdate(
       req.params.id,
