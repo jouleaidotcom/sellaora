@@ -37,6 +37,14 @@ const storeSchema = new mongoose.Schema({
     type: Object,
     default: null
   },
+  currency: {
+    type: String,
+    default: 'USD'
+  },
+  locale: {
+    type: String,
+    default: 'en-US'
+  },
   // JSON layout for publishing (AI generated + user edited)
   jsonLayout: {
     type: Object,

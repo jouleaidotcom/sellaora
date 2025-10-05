@@ -30,6 +30,14 @@ const productSchema = new mongoose.Schema({
   images: {
     type: [String],
     default: []
+  },
+  status: {
+    type: String,
+    enum: ['draft', 'published'],
+    default: 'draft'
+  },
+  publishedAt: {
+    type: Date
   }
 }, {
   timestamps: true,

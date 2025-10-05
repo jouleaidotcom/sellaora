@@ -150,8 +150,13 @@ export const productAPI = {
     });
   },
 
-  listByStore: async (storeId) => {
-    return makeAuthenticatedRequest(`/products/${storeId}`);
+  listByStore: async (storeId, params = {}) => {
+    const clean = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(clean).toString();
+    const qs = query ? `?${query}` : '';
+    return makeAuthenticatedRequest(`/products/${storeId}${qs}`);
   },
 
   getById: async (id) => {
@@ -168,6 +173,12 @@ export const productAPI = {
   remove: async (id) => {
     return makeAuthenticatedRequest(`/products/${id}`, {
       method: 'DELETE',
+    });
+  },
+  bulkAction: async (action, ids) => {
+    return makeAuthenticatedRequest('/products/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ action, ids }),
     });
   },
 };
