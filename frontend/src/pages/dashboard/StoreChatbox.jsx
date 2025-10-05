@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { storeAPI, getAuthToken } from '../../utils/api';
 import StorePreview from '../../components/store/StorePreview';
+import DeviceFrame from '../../components/ui/DeviceFrame';
+import PreviewSkeleton from '../../components/ui/PreviewSkeleton';
 
 const StoreChatbox = () => {
   const { storeId } = useParams();
@@ -10,6 +12,7 @@ const StoreChatbox = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [store, setStore] = useState(null);
+  const [device, setDevice] = useState('desktop'); // 'desktop' | 'mobile'
   const endRef = useRef(null);
 
   const isAuthed = !!getAuthToken();
@@ -19,7 +22,6 @@ const StoreChatbox = () => {
       navigate('/login');
       return;
     }
-    // fetch store for initial preview if exists
     const load = async () => {
       try {
         const res = await storeAPI.getStoreById(storeId);
@@ -46,9 +48,8 @@ const StoreChatbox = () => {
       const res = await storeAPI.sendAIPrompt(storeId, userMsg.content);
       const ai = res?.data?.ai;
       const updatedStore = res?.data?.store;
-      if (ai) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: JSON.stringify(ai, null, 2) }]);
-      }
+      const friendly = res?.data?.message || res?.message || 'Done! I updated the preview based on your request.';
+      setMessages((prev) => [...prev, { role: 'assistant', content: friendly }]);
       if (updatedStore) setStore(updatedStore);
     } catch (e2) {
       setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${e2.message || 'Failed to generate'}` }]);
@@ -66,70 +67,143 @@ const StoreChatbox = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-6 grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border shadow-sm flex flex-col h-[80vh]">
-          <div className="px-4 py-3 border-b">
-            <h1 className="text-lg font-semibold">AI Prompt Chatbox</h1>
-            <p className="text-xs text-gray-500">Store ID: {storeId}</p>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.length === 0 && (
-              <div className="text-sm text-gray-500">Describe your desired store vibe and content. Example: "I want my website to look childish because I’m selling kids’ products."</div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-                <div className={`${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'} inline-block px-3 py-2 rounded-lg whitespace-pre-wrap text-sm max-w-[90%]`}>{m.content}</div>
-              </div>
-            ))}
-            {loading && <div className="text-sm text-gray-500">Generating...</div>}
-            <div ref={endRef} />
-          </div>
-          <form onSubmit={onSubmit} className="p-3 border-t flex gap-2">
-            <input
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe your theme, colors, sections..."
-              className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">Submit</button>
-          </form>
-          <div className="p-3 border-t flex gap-2">
-            <button onClick={onTryAgain} className="text-sm px-3 py-2 rounded border">Try again / Change prompt</button>
-            <button 
-              onClick={async () => {
-                try {
-                  // choose the theme on the backend
-                  const chosenThemeId = store?.theme?.id || store?.theme?.themeId || 'theme-1';
-                  await storeAPI.chooseTheme(storeId, chosenThemeId);
-                  // store the storeId so editor can fetch editor data
-                  localStorage.setItem('editorStoreId', storeId);
-                  // Open the drag-and-drop Designer (uses editorStoreId under the hood)
-                  navigate(`/editor/${chosenThemeId}`);
-                } catch (e) {
-                  console.error('Choose theme failed', e);
-                  alert('Failed to choose theme');
-                }
-              }} 
-              className="text-sm px-3 py-2 rounded bg-green-600 text-white"
-            >
-              Continue with this theme
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-neutral-950 text-neutral-100">
 
-        <div className="bg-white rounded-xl border shadow-sm p-4 h-[80vh] overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-3">Live Preview</h2>
-          <StorePreview theme={theme} layout={layout} />
-          {!theme && (
-            <div className="text-xs text-gray-500 mt-4">No AI theme yet. Submit a prompt to generate one.</div>
-          )}
-        </div>
+      {/* Hero-esque intro */}
+      <div className="max-w-4xl mx-auto pt-16 pb-6 px-6 text-center">
+        <div className="inline-block mb-3 px-3 py-1.5 bg-emerald-900/30 border border-emerald-800 rounded-full text-emerald-300 text-xs">Introducing Sellaora</div>
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Build in minutes & sell to Millions</h1>
+        <p className="text-base md:text-lg text-neutral-400">Create websites by chatting with AI. Describe what you want—see a live preview instantly.</p>
       </div>
+
+      {/* Chat Input (hero) — visible only before first message) */}
+      {messages.length === 0 && (
+        <div className="max-w-3xl mx-auto px-6 pb-8 flex justify-center">
+          <form onSubmit={onSubmit} className="bg-neutral-900 rounded-2xl shadow border border-neutral-800 overflow-hidden w-full">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(e); } }}
+                placeholder="Describe your site (e.g., ‘A clean shop with a hero, features, and a footer’)…"
+                className="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 text-neutral-100 placeholder-neutral-400 rounded-full text-sm outline-none focus:ring-2 focus:ring-neutral-700"
+              />
+              <button 
+                type="submit"
+                disabled={loading}
+                className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white text-neutral-900 hover:bg-neutral-200 disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+            {/* Prompt chips */}
+            <div className="px-5 pb-4 flex flex-wrap items-center justify-center gap-2 text-neutral-400">
+              {['Landing page for coffee brand','Add a product grid','Dark theme footer','About + Contact sections'].map((t) => (
+                <button key={t} type="button" onClick={() => setPrompt(t)} className="px-2.5 py-1.5 text-xs rounded-full border border-neutral-700 bg-neutral-800 text-neutral-200 hover:bg-neutral-700">
+                  {t}
+                </button>
+              ))}
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Messages & Preview */}
+      {messages.length > 0 && (
+        <div className="max-w-6xl mx-auto px-6 pb-12">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Chat */}
+            <div className="bg-neutral-900 rounded-2xl shadow border border-neutral-800 p-6">
+              <div className="mb-4">
+                <h2 className="font-semibold text-neutral-100">Chat</h2>
+                <p className="text-xs text-neutral-400">Store ID: {storeId}</p>
+              </div>
+              <div className="space-y-3 mb-4 max-h-96 overflow-y-auto pr-1">
+                {messages.map((m, i) => (
+                  <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+                    <div className={`inline-block px-4 py-2 rounded-2xl text-sm ${
+                      m.role === 'user' 
+                        ? 'bg-neutral-800 text-white' 
+                        : 'bg-neutral-800/50 text-neutral-200'
+                    }`}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {loading && <div className="text-sm text-neutral-400">Generating...</div>}
+                <div ref={endRef} />
+              </div>
+              {/* Composer inside chat — visible after we have messages */}
+              <form onSubmit={onSubmit} className="flex items-center gap-2 pt-4 border-t border-neutral-800 mt-2">
+                <div className="flex-1 flex items-center gap-2 bg-neutral-800 border border-neutral-700 rounded-full px-3">
+                  <input
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit(e); } }}
+                    placeholder="Tell the AI what to change… (e.g., ‘make the hero darker’)"
+                    className="flex-1 px-2 py-2 text-sm bg-transparent outline-none text-neutral-100 placeholder-neutral-400"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={loading || !prompt.trim()}
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white text-neutral-900 hover:bg-neutral-200 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                </div>
+                <button 
+                  type="button"
+                  onClick={onTryAgain}
+                  className="px-3 py-2 text-sm border border-neutral-700 rounded-lg hover:bg-neutral-800"
+                >
+                  Reset
+                </button>
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const chosenThemeId = store?.theme?.id || store?.theme?.themeId || 'theme-1';
+                      await storeAPI.chooseTheme(storeId, chosenThemeId);
+                      navigate(`/editor/${chosenThemeId}`);
+                    } catch (e) {
+                      console.error('Choose theme failed', e);
+                      alert('Failed to choose theme');
+                    }
+                  }}
+                  className="px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-500"
+                >
+                  Open in editor
+                </button>
+              </form>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-transparent">
+              <DeviceFrame device={device}>
+                <div className="relative">
+                  {loading && (
+                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-start justify-start rounded-xl">
+                      <PreviewSkeleton />
+                    </div>
+                  )}
+                  <div className={`p-4 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <StorePreview theme={theme} layout={layout} />
+                    {!theme && (
+                      <div className="text-sm text-neutral-400">No theme yet</div>
+                    )}
+                  </div>
+                </div>
+              </DeviceFrame>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default StoreChatbox;
-
-
