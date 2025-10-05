@@ -72,6 +72,12 @@ export default Navbar;
 function generateUniversalSectionComponent(componentsDir) {
   const universalComponent = `import React from 'react';
 
+const toSlug = (name = '') => String(name)
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
 const Section = ({ section }) => {
   const {
     type,
@@ -102,11 +108,15 @@ const Section = ({ section }) => {
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ color: textColor, margin: 0 }}>{content.logo}</h2>
               <div style={{ display: 'flex', gap: '2rem' }}>
-                {content.links?.map((link, index) => (
-                  <a key={index} href={link.url} style={{ color: textColor, textDecoration: 'none' }}>
-                    {link.text}
-                  </a>
-                ))}
+                {content.links?.map((link, index) => {
+                  const isPage = link?.type === 'page' || !!link?.pageName;
+                  const href = isPage ? ('#/' + toSlug(link.pageName || link.text || '')) : (link?.url || '#');
+                  return (
+                    <a key={index} href={href} style={{ color: textColor, textDecoration: 'none' }}>
+                      {link.text}
+                    </a>
+                  );
+                })}
               </div>
             </div>
           </nav>
@@ -180,13 +190,17 @@ const Section = ({ section }) => {
               {content.links && (
                 <div>
                   <h4 style={{ marginBottom: '1rem', color: textColor }}>Links</h4>
-                  {content.links.map((link, index) => (
-                    <div key={index} style={{ marginBottom: '0.5rem' }}>
-                      <a href={link.url} style={{ color: textColor, textDecoration: 'none' }}>
-                        {link.text}
-                      </a>
-                    </div>
-                  ))}
+                  {content.links.map((link, index) => {
+                    const isPage = link?.type === 'page' || !!link?.pageName;
+                    const href = isPage ? ('#/' + toSlug(link.pageName || link.text || '')) : (link?.url || '#');
+                    return (
+                      <div key={index} style={{ marginBottom: '0.5rem' }}>
+                        <a href={href} style={{ color: textColor, textDecoration: 'none' }}>
+                          {link.text}
+                        </a>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -501,34 +515,52 @@ export default TextSection;
  */
 function generateAppComponent(buildDir, jsonLayout) {
   console.log('🔍 Debug: jsonLayout received:', JSON.stringify(jsonLayout, null, 2));
-  
-  const page = jsonLayout.pages?.[0] || {};
-  const sections = page.sections || [];
-  
-  console.log('🔍 Debug: Extracted page:', JSON.stringify(page, null, 2));
-  console.log('🔍 Debug: Sections count:', sections.length);
-  
-  // Generate section instances using universal Section component
-  const components = sections.map((section, index) => {
-    const sectionData = JSON.stringify(section, null, 4);
-    return `      <Section section={${sectionData}} />`;
-  }).join('\n');
-  
+
+  const pages = Array.isArray(jsonLayout?.pages) && jsonLayout.pages.length
+    ? jsonLayout.pages
+    : [{ name: 'Home', sections: Array.isArray(jsonLayout?.sections) ? jsonLayout.sections : [] }];
+
+  const pagesLiteral = JSON.stringify(pages, null, 2);
+
   const appComponent = `import React from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Section from './components/Section';
 import './App.css';
 
+const toSlug = (name = '') => String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+const PAGES = ${pagesLiteral};
+
+const Page = ({ sections = [] }) => (
+  <div className="App">
+    {sections.map((section, idx) => (
+      <Section key={idx} section={section} />
+    ))}
+  </div>
+);
+
 function App() {
+  const home = PAGES[0];
   return (
-    <div className="App">
-${components}
-    </div>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to={'/' + toSlug(home?.name || 'home')} replace />} />
+        {PAGES.map((p, i) => (
+          <Route
+            key={i}
+            path={'/' + toSlug(p?.name || ('page-' + (i + 1)))}
+            element={<Page sections={Array.isArray(p?.sections) ? p.sections : []} />}
+          />
+        ))}
+        <Route path="*" element={<Navigate to={'/' + toSlug(home?.name || 'home')} replace />} />
+      </Routes>
+    </HashRouter>
   );
 }
 
 export default App;
 `;
-  
+
   fs.writeFileSync(path.join(buildDir, 'src', 'App.jsx'), appComponent);
 }
 
