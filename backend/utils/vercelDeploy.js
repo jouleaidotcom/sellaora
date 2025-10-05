@@ -10,7 +10,7 @@ const { execSync } = require('child_process');
  * @param {string} domain - Custom domain for the store
  * @returns {Promise<Object>} - Deployment result with URL
  */
-async function deployToVercel(buildDir, storeName, domain) {
+async function deployToVercel(buildDir, storeName, domain, preferredProjectName, preferredAlias) {
   try {
     console.log(`🚀 Starting Vercel deployment for ${storeName}...`);
     
@@ -69,25 +69,19 @@ async function deployToVercel(buildDir, storeName, domain) {
         const relativePath = path.relative(distPath, filePath);
         const fileContent = fs.readFileSync(filePath);
         
-        // Try sending HTML, CSS, JS as UTF-8 strings instead of base64
-        const isTextFile = /\.(html?|css|js|jsx|ts|tsx|json|txt|md|svg)$/i.test(relativePath);
-        
-        if (isTextFile) {
-          return {
-            file: relativePath,
-            data: fileContent.toString('utf-8')
-          };
-        } else {
-          return {
-            file: relativePath,
-            data: fileContent.toString('base64')
-          };
-        }
+        // Always send base64 with explicit encoding
+        return {
+          file: relativePath,
+          data: fileContent.toString('base64'),
+          encoding: 'base64'
+        };
       });
     
     console.log(`📦 Filtered to ${vercelFiles.length} files for deployment (excluding build config):`);
     vercelFiles.forEach(f => {
-      const size = Buffer.from(f.data, 'base64').length;
+      const absolute = path.join(distPath, f.file);
+      let size = 0;
+      try { size = fs.statSync(absolute).size; } catch {}
       console.log(`  ✅ ${f.file} (${size} bytes)`);
     });
     
@@ -96,7 +90,7 @@ async function deployToVercel(buildDir, storeName, domain) {
     console.log('🚀 Deploying pure static files (no config files)');
     console.log('📦 Files to deploy:', vercelFiles.length);
     console.log('');
-    
+  
     // Choose a stable project name so subsequent publishes go to the same URL
     // Prefer the store domain (unique) and fall back to storeName
     const preferred = (domain || storeName || 'store');
@@ -104,6 +98,9 @@ async function deployToVercel(buildDir, storeName, domain) {
     // Sanitize name for Vercel requirements
     // Project names must be lowercase, can include letters, digits, '.', '_', '-'
     const finalName = preferred
+    // Derive a stable project base name from domain (preferred) or storeName
+    const rawBase = (domain && !domain.includes('.')) ? domain : (storeName || 'store');
+    const baseName = (rawBase || 'store')
       .toLowerCase()
       .replace(/[^a-z0-9._-]/g, '-')
       .replace(/-+/g, '-')
@@ -113,13 +110,30 @@ async function deployToVercel(buildDir, storeName, domain) {
 
     console.log(`📝 Using stable Vercel project name: "${finalName}"`);
 
+    // If custom domain is attached to another project, deploy to that project instead
+    let projectName = (preferredProjectName && preferredProjectName.trim())
+      ? preferredProjectName.trim()
+      : `${baseName}-static`.substring(0, 100);
+
+    if (domain && domain.includes('.')) {
+      const ownerProject = await getProjectNameForDomain(domain);
+      if (ownerProject) {
+        projectName = ownerProject;
+        console.log(`📝 Using existing project that owns domain: "${projectName}"`);
+      }
+    }
+
+    console.log(`📝 Using stable Vercel project name: "${projectName}"`);
     // Create deployment payload
     const deploymentPayload = {
-      name: finalName,
+      name: projectName,
       files: vercelFiles,
       target: 'production'
     };
     
+    // Ensure the project exists (no-op if it already does)
+    await ensureProjectExists(projectName);
+
     // Deploy to Vercel with skipAutoDetectionConfirmation to bypass framework detection
     console.log('☁️ Deploying to Vercel with auto-detection bypass...');
     const response = await axios.post(
@@ -141,12 +155,61 @@ async function deployToVercel(buildDir, storeName, domain) {
     const deploymentUrl = await waitForDeployment(deployment.id, finalName);
     
     console.log(`🌐 Site deployed successfully: https://${deploymentUrl}`);
+
+    // Determine primary stable alias
+    const stableSubdomain = `${baseName}.vercel.app`;
+    let desiredAlias = preferredAlias && preferredAlias.trim() ? preferredAlias.trim() : '';
+
+    // If no preferred alias yet, choose custom domain (if present) otherwise stable subdomain
+    if (!desiredAlias) {
+      if (domain && domain.trim()) {
+        desiredAlias = domain.includes('.') ? domain.trim().toLowerCase() : `${domain.trim().toLowerCase()}.vercel.app`;
+      } else {
+        desiredAlias = stableSubdomain;
+      }
+    }
+
+    let finalUrl = `https://${deploymentUrl}`;
+
+    // Always try to set the stable subdomain first to guarantee a stable URL
+    try {
+      const subAssigned = await assignAliasToDeployment(deployment.id, stableSubdomain);
+      if (subAssigned) {
+        finalUrl = `https://${stableSubdomain}`;
+        console.log(`🔗 Assigned stable subdomain alias: ${finalUrl}`);
+      } else {
+        console.warn('⚠️ Failed to assign stable subdomain alias');
+      }
+    } catch (e) {
+      console.warn('⚠️ Stable subdomain alias error:', e.response?.data || e.message);
+    }
+
+    // Then, if desired alias differs (e.g., custom domain), attempt it as well
+    if (desiredAlias !== stableSubdomain) {
+      try {
+        const isCustom = desiredAlias.includes('.') && !desiredAlias.endsWith('.vercel.app');
+        if (isCustom) {
+          await safeAddDomainToProject(projectName, desiredAlias);
+        }
+        const aliasAssigned = await assignAliasToDeployment(deployment.id, desiredAlias);
+        if (aliasAssigned) {
+          finalUrl = `https://${desiredAlias}`;
+          console.log(`🔗 Assigned custom alias to deployment: ${finalUrl}`);
+        } else {
+          console.warn('⚠️ Custom alias assignment failed; keeping current URL');
+        }
+      } catch (aliasErr) {
+        console.warn('⚠️ Custom alias assignment error:', aliasErr.response?.data || aliasErr.message);
+      }
+    }
     
     return {
       success: true,
-      url: `https://${deploymentUrl}`,
+      url: finalUrl,
       deploymentId: deployment.id,
-      deploymentUrl
+      deploymentUrl,
+      projectName,
+      alias: finalUrl.replace(/^https?:\/\//, '')
     };
     
   } catch (error) {
@@ -321,6 +384,84 @@ async function deleteDeployment(deploymentId) {
   } catch (error) {
     console.error('Failed to delete deployment:', error.message);
     return false;
+  }
+}
+
+async function assignAliasToDeployment(deploymentId, alias) {
+  try {
+    const res = await axios.post(
+      `https://api.vercel.com/v2/deployments/${deploymentId}/aliases`,
+      { alias },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.VERCEL_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return res.status === 200 || res.status === 201;
+  } catch (error) {
+    console.warn('Alias API error:', error.response?.data || error.message);
+    return false;
+  }
+}
+
+async function safeAddDomainToProject(projectName, domain) {
+  try {
+    await axios.post(
+      `https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}/domains`,
+      { name: domain },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.VERCEL_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  } catch (error) {
+    const code = error.response?.data?.error?.code || error.response?.data?.code;
+    if (code !== 'domain_already_exists' && code !== 'forbidden' && code !== 'domain_conflict') {
+      console.warn('add domain warning:', error.response?.data || error.message);
+    }
+  }
+}
+
+async function ensureProjectExists(projectName) {
+  try {
+    await axios.get(
+      `https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}`,
+      { headers: { 'Authorization': `Bearer ${process.env.VERCEL_TOKEN}` } }
+    );
+    return true;
+  } catch (err) {
+    if (err.response?.status === 404) {
+      await axios.post(
+        'https://api.vercel.com/v10/projects',
+        { name: projectName },
+        { headers: { 'Authorization': `Bearer ${process.env.VERCEL_TOKEN}`, 'Content-Type': 'application/json' } }
+      );
+      return true;
+    }
+    console.warn('ensureProjectExists warning:', err.response?.data || err.message);
+    return false;
+  }
+}
+
+async function getProjectNameForDomain(domain) {
+  try {
+    const res = await axios.get(
+      `https://api.vercel.com/v6/domains/${encodeURIComponent(domain.trim().toLowerCase())}`,
+      { headers: { 'Authorization': `Bearer ${process.env.VERCEL_TOKEN}` } }
+    );
+    const projectId = res.data?.projectId || res.data?.domain?.projectId;
+    if (!projectId) return null;
+    const proj = await axios.get(
+      `https://api.vercel.com/v10/projects/${projectId}`,
+      { headers: { 'Authorization': `Bearer ${process.env.VERCEL_TOKEN}` } }
+    );
+    return proj.data?.name || null;
+  } catch (e) {
+    return null;
   }
 }
 

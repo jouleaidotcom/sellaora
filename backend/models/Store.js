@@ -52,6 +52,15 @@ const storeSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Vercel project tracking for stable redeploys
+  vercelProjectName: {
+    type: String,
+    default: null
+  },
+  vercelAlias: {
+    type: String,
+    default: null
+  },
   // Last published timestamp
   lastPublished: {
     type: Date,

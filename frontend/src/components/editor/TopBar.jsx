@@ -1,11 +1,13 @@
 import PublishButton from './PublishButton';
 
-const TopBar = ({ onUndo, onRedo, onSave, onExit, canUndo, canRedo, isSaving, storeId, jsonLayout }) => {
+const TopBar = ({ onUndo, onRedo, onSave, onExit, canUndo, canRedo, isSaving, storeId, jsonLayout, storeName }) => {
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between px-6 py-3">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-gray-900">Website Editor</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            {storeName || 'My Store'}
+          </h1>
           <div className="h-6 w-px bg-gray-300"></div>
           <span className="text-sm text-gray-500">Visual Page Builder</span>
         </div>

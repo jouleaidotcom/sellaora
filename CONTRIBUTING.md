@@ -1,5 +1,5 @@
 # Contributing to Sellaora
-Sellaora is an open-source e-commerce platform builder that serves as a powerful alternative to Shopify. Our mission is to democratize e-commerce by providing a free, customizable, and feature-rich platform that gives merchants complete control over their online stores.
+Sellaora is an open-source e-commerce platform builder that serves as a powerful alternative to Shopify. Our mission is to democratize e-commerce by providing a customizable, and feature-rich platform that gives merchants complete control over their online stores.
 
 ### Why Contribute?
 - Join a growing community of e-commerce enthusiasts

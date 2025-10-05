@@ -73,7 +73,9 @@ router.post('/:storeId/publish', authMiddleware, async (req, res) => {
     const deploymentResult = await deployToVercel(
       buildDir,
       store.storeName,
-      store.domain
+      store.domain,
+      store.vercelProjectName || null,
+      store.vercelAlias || null
     );
     
     if (!deploymentResult.success) {
@@ -83,6 +85,12 @@ router.post('/:storeId/publish', authMiddleware, async (req, res) => {
     // Update store with deployment info
     store.publishedUrl = deploymentResult.url;
     store.vercelDeploymentId = deploymentResult.deploymentId;
+    if (deploymentResult.projectName) {
+      store.vercelProjectName = deploymentResult.projectName;
+    }
+    if (deploymentResult.alias) {
+      store.vercelAlias = deploymentResult.alias;
+    }
     store.lastPublished = new Date();
     await store.save();
     
