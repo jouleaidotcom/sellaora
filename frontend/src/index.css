@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+/* Small utility: multi-line clamp */
+.clamp-5 {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Marquee animation for the "Trusted by" section */
+@keyframes sellaora-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.trust-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+.trust-marquee-track {
+  display: flex;
+  align-items: center;
+  width: max-content; /* shrink to content width for smooth translate */
+  gap: 2.5rem; /* ~40px */
+  animation: sellaora-marquee 28s linear infinite;
+}
+.trust-marquee:hover .trust-marquee-track {
+  animation-play-state: paused;
+}
+
+/* Community testimonials marquee animations */
+@keyframes community-marquee-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes community-marquee-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.community-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+.community-marquee-track {
+  display: flex;
+  align-items: stretch; /* make children respect equal heights */
+  width: max-content;
+  gap: 1.5rem;
+}
+
+.community-marquee-left .community-marquee-track {
+  animation: community-marquee-left 50s linear infinite;
+}
+
+.community-marquee-right .community-marquee-track {
+  animation: community-marquee-right 45s linear infinite;
+}
+
+/* Keep animation running even on hover */
+
+/* Add slight vertical float animation for visual interest */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Apply float animation to the container, marquee to the track */
+.community-marquee-left {
+  animation: float 12s ease-in-out infinite;
+}
+
+.community-marquee-right {
+  animation: float 14s ease-in-out infinite reverse;
+}
