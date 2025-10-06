@@ -183,4 +183,73 @@ export const productAPI = {
   },
 };
 
-export default { authAPI, storeAPI, productAPI };
+// Image upload API functions
+export const uploadAPI = {
+  uploadImages: async (files) => {
+    const formData = new FormData();
+    
+    // Add multiple files to FormData
+    if (Array.isArray(files)) {
+      files.forEach(file => {
+        formData.append('images', file);
+      });
+    } else {
+      formData.append('images', files);
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/upload/images`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+        // Don't set Content-Type for FormData, let browser handle it
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(errorData.message || 'Upload failed');
+    }
+    
+    return response.json();
+  },
+  
+  uploadSingleImage: async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/upload/single-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(errorData.message || 'Upload failed');
+    }
+    
+    return response.json();
+  },
+  
+  deleteImages: async (imageUrls = [], publicIds = []) => {
+    return makeAuthenticatedRequest('/upload/images', {
+      method: 'DELETE',
+      body: JSON.stringify({ imageUrls, publicIds }),
+    });
+  },
+  
+  checkHealth: async () => {
+    const response = await fetch(`${API_BASE_URL}/upload/health`);
+    if (!response.ok) {
+      throw new Error('Health check failed');
+    }
+    return response.json();
+  },
+};
+
+export default { authAPI, storeAPI, productAPI, uploadAPI };
