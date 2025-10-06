@@ -28,8 +28,29 @@ const productSchema = new mongoose.Schema({
     default: 0
   },
   images: {
-    type: [String],
-    default: []
+    type: mongoose.Schema.Types.Mixed, // Use Mixed to support both old (strings) and new (objects) formats
+    default: [],
+    validate: {
+      validator: function(images) {
+        if (!Array.isArray(images)) return false;
+        
+        // Allow empty array
+        if (images.length === 0) return true;
+        
+        // Validate each image - can be string (old format) or object (new format)
+        return images.every(image => {
+          if (typeof image === 'string') {
+            return true; // Old format - just strings
+          }
+          if (typeof image === 'object' && image !== null) {
+            // New format - must have at least url
+            return typeof image.url === 'string';
+          }
+          return false;
+        });
+      },
+      message: 'Images must be an array of strings or objects with url property'
+    }
   },
   status: {
     type: String,
