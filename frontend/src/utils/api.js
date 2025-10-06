@@ -183,6 +183,46 @@ export const productAPI = {
   },
 };
 
+// Team API functions
+export const teamAPI = {
+  createTeam: async (name) => {
+    return makeAuthenticatedRequest('/teams', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  },
+  myTeams: async () => {
+    return makeAuthenticatedRequest('/teams/my');
+  },
+  listMembers: async (teamId) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}/members`);
+  },
+  invite: async (teamId, { email, role }) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}/invites`, {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    });
+  },
+  acceptInvite: async (token) => {
+    return makeAuthenticatedRequest('/teams/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+  updateMember: async (teamId, userId, payload) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  removeMember: async (teamId, userId) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}/members/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export default { authAPI, storeAPI, productAPI, teamAPI };
 // Image upload API functions
 export const uploadAPI = {
   uploadImages: async (files) => {
