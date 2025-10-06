@@ -9,6 +9,7 @@ import Editor from './pages/Editor'
 import StoreChatbox from './pages/dashboard/StoreChatbox'
 import StoreApproval from './pages/dashboard/StoreApproval'
 import StoreDashboard from './pages/dashboard/StoreDashboard'
+import Team from './pages/dashboard/Team'
 import ProtectedRoute from './components/ProtectedRoute'
 import Landing from './pages/Landing'
 
@@ -55,6 +56,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Editor />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/team/:teamId?" 
+          element={
+            <ProtectedRoute>
+              <Team />
             </ProtectedRoute>
           } 
         />
