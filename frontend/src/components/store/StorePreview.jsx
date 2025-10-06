@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // Note: The surrounding browser chrome is now provided by DeviceFrame.
 // Keep this component minimal (no outer borders) to avoid double frames.
@@ -174,6 +174,93 @@ const StorePreview = ({ theme, layout }) => {
   const logoUrl = theme?.logoUrl;
   const fontFamily = theme?.fonts || 'Inter, ui-sans-serif, system-ui';
 
+  // Multi-page support
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+  const isMultiPage = pages.length > 0;
+  
+  // Get current page sections
+  const currentSections = isMultiPage 
+    ? (pages[currentPageIndex]?.sections || [])
+    : (layout?.sections || []);
+
+  const renderSection = (section, idx) => {
+    const type = String(section.type || '').toLowerCase();
+    if (type === 'navbar') {
+      return (
+        <Navbar
+          key={idx}
+          logo={section.logo}
+          links={section.links}
+          bgColor={section.bgColor}
+          textColor={section.textColor}
+        />
+      );
+    }
+    if (type === 'hero') {
+      return <HeroSection key={idx} title={section.title} subtitle={section.subtitle} imageUrl={section.image || section.imageUrl} />;
+    }
+    if (type === 'features' || type === 'featuredproducts') {
+      return <Features key={idx} title={section.title} items={section.items || []} />;
+    }
+    if (type === 'collection') {
+      return <Collection key={idx} title={section.title} items={section.items || []} />;
+    }
+    if (type === 'testimonials') {
+      return <Testimonials key={idx} title={section.title} items={section.items || []} />;
+    }
+    if (type === 'pricing') {
+      return <Pricing key={idx} title={section.title} items={section.items || []} />;
+    }
+    if (type === 'cta') {
+      return (
+        <CTA 
+          key={idx} 
+          title={section.title} 
+          subtitle={section.subtitle} 
+          buttonText={section.buttonText}
+          bgColor={section.bgColor}
+          textColor={section.textColor}
+        />
+      );
+    }
+    if (type === 'gallery') {
+      return <Gallery key={idx} title={section.title} images={section.images || []} />;
+    }
+    if (type === 'newsletter') {
+      return (
+        <Newsletter 
+          key={idx} 
+          title={section.title} 
+          subtitle={section.subtitle} 
+          buttonText={section.buttonText}
+          bgColor={section.bgColor}
+          textColor={section.textColor}
+        />
+      );
+    }
+    if (type === 'textblock') {
+      return <TextBlock key={idx} heading={section.heading} content={section.content} />;
+    }
+    if (type === 'footer') {
+      return (
+        <Footer
+          key={idx}
+          companyName={section.companyName}
+          tagline={section.tagline}
+          links={section.links}
+          bgColor={section.bgColor}
+          textColor={section.textColor}
+        />
+      );
+    }
+    return (
+      <div key={idx} className="bg-white rounded-xl border border-neutral-200 p-4 mb-5 text-sm text-neutral-500">
+        Unsupported section type: {section.type}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full" style={{ fontFamily }}>
       <div className="p-4">
@@ -184,92 +271,45 @@ const StorePreview = ({ theme, layout }) => {
           </div>
         </div>
 
+        {/* Multi-page navigation */}
+        {isMultiPage && pages.length > 1 && (
+          <div className="mb-4 bg-white rounded-xl border border-neutral-200 p-3 shadow-sm">
+            <div className="text-xs font-semibold text-neutral-600 mb-2">Pages:</div>
+            <div className="flex gap-2 flex-wrap">
+              {pages.map((page, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentPageIndex(idx)}
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    currentPageIndex === idx
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                  }`}
+                >
+                  {page.name || `Page ${idx + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Current page indicator */}
+        {isMultiPage && (
+          <div className="mb-4 text-center">
+            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded text-sm font-medium">
+              📄 {pages[currentPageIndex]?.name || 'Untitled Page'} 
+              <span className="text-xs opacity-70">({pages[currentPageIndex]?.path || '/'})</span>
+            </div>
+          </div>
+        )}
+
         {bannerUrl && (
           <div className="mb-5 rounded-xl overflow-hidden shadow-sm">
             <img src={bannerUrl} alt="banner" className="w-full h-40 object-cover" />
           </div>
         )}
 
-        {(
-          Array.isArray(layout?.pages)
-            ? (layout.pages[0]?.sections || [])
-            : (layout?.sections || [])
-        ).map((section, idx) => {
-          const type = String(section.type || '').toLowerCase();
-          if (type === 'navbar') {
-            return (
-              <Navbar
-                key={idx}
-                logo={section.logo}
-                links={section.links}
-                bgColor={section.bgColor}
-                textColor={section.textColor}
-              />
-            );
-          }
-          if (type === 'hero') {
-            return <HeroSection key={idx} title={section.title} subtitle={section.subtitle} imageUrl={section.image || section.imageUrl} />;
-          }
-          if (type === 'features' || type === 'featuredproducts') {
-            return <Features key={idx} title={section.title} items={section.items || []} />;
-          }
-          if (type === 'collection') {
-            return <Collection key={idx} title={section.title} items={section.items || []} />;
-          }
-          if (type === 'testimonials') {
-            return <Testimonials key={idx} title={section.title} items={section.items || []} />;
-          }
-          if (type === 'pricing') {
-            return <Pricing key={idx} title={section.title} items={section.items || []} />;
-          }
-          if (type === 'cta') {
-            return (
-              <CTA 
-                key={idx} 
-                title={section.title} 
-                subtitle={section.subtitle} 
-                buttonText={section.buttonText}
-                bgColor={section.bgColor}
-                textColor={section.textColor}
-              />
-            );
-          }
-          if (type === 'gallery') {
-            return <Gallery key={idx} title={section.title} images={section.images || []} />;
-          }
-          if (type === 'newsletter') {
-            return (
-              <Newsletter 
-                key={idx} 
-                title={section.title} 
-                subtitle={section.subtitle} 
-                buttonText={section.buttonText}
-                bgColor={section.bgColor}
-                textColor={section.textColor}
-              />
-            );
-          }
-          if (type === 'textblock') {
-            return <TextBlock key={idx} heading={section.heading} content={section.content} />;
-          }
-          if (type === 'footer') {
-            return (
-              <Footer
-                key={idx}
-                companyName={section.companyName}
-                tagline={section.tagline}
-                links={section.links}
-                bgColor={section.bgColor}
-                textColor={section.textColor}
-              />
-            );
-          }
-          return (
-            <div key={idx} className="bg-white rounded-xl border border-neutral-200 p-4 mb-5 text-sm text-neutral-500">
-              Unsupported section type: {section.type}
-            </div>
-          );
-        })}
+        {currentSections.map((section, idx) => renderSection(section, idx))}
       </div>
     </div>
   );
