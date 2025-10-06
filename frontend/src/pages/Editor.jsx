@@ -118,6 +118,113 @@ const Editor = () => {
                 }
               };
             }
+            if (t === 'collection') {
+              return {
+                id,
+                type: 'collection',
+                props: {
+                  title: s.title || 'Our Collection',
+                  items: (Array.isArray(s.items) ? s.items : [
+                    { name: 'Product 1', price: '$19', image: 'https://picsum.photos/seed/p1/300/200', description: 'Great product' },
+                    { name: 'Product 2', price: '$29', image: 'https://picsum.photos/seed/p2/300/200', description: 'Amazing quality' },
+                    { name: 'Product 3', price: '$39', image: 'https://picsum.photos/seed/p3/300/200', description: 'Best seller' },
+                  ]).map(item => ({
+                    name: item.name || item.title || 'Product',
+                    price: item.price || '$0',
+                    image: item.image || 'https://picsum.photos/seed/default/300/200',
+                    description: item.description || 'Product description'
+                  })),
+                  bgColor: s.bgColor || '#ffffff',
+                  textColor: s.textColor || '#374151',
+                }
+              };
+            }
+            if (t === 'testimonials') {
+              return {
+                id,
+                type: 'testimonials',
+                props: {
+                  title: s.title || 'What customers say',
+                  items: (Array.isArray(s.items) ? s.items : [
+                    { name: 'Alex', rating: 5, text: 'Amazing products!', avatar: 'https://picsum.photos/seed/alex/100/100' },
+                    { name: 'Sam', rating: 5, text: 'Great support and fast delivery.', avatar: 'https://picsum.photos/seed/sam/100/100' },
+                  ]).map(item => ({
+                    name: item.name || item.author || 'Customer',
+                    rating: item.rating || 5,
+                    text: item.text || item.quote || 'Great experience!',
+                    avatar: item.avatar || `https://picsum.photos/seed/${item.name || 'user'}/100/100`
+                  })),
+                  bgColor: s.bgColor || '#f9fafb',
+                  textColor: s.textColor || '#374151',
+                }
+              };
+            }
+            if (t === 'pricing') {
+              return {
+                id,
+                type: 'pricing',
+                props: {
+                  title: s.title || 'Pricing Plans',
+                  items: (Array.isArray(s.items) ? s.items : [
+                    { name: 'Basic', price: '$9/mo', features: ['Feature A', 'Feature B'], buttonText: 'Get Started' },
+                    { name: 'Pro', price: '$29/mo', features: ['Everything in Basic', 'Feature C'], buttonText: 'Choose Pro', featured: true },
+                  ]).map(item => ({
+                    name: item.name || 'Plan',
+                    price: item.price || '$0',
+                    features: Array.isArray(item.features) ? item.features : ['Feature 1', 'Feature 2'],
+                    buttonText: item.buttonText || 'Choose Plan',
+                    featured: item.featured || false
+                  })),
+                  bgColor: s.bgColor || '#ffffff',
+                  textColor: s.textColor || '#374151',
+                }
+              };
+            }
+            if (t === 'cta') {
+              return {
+                id,
+                type: 'cta',
+                props: {
+                  heading: s.title || s.heading || 'Ready to get started?',
+                  subheading: s.subtitle || s.subheading || 'Join us today',
+                  buttonText: s.buttonText || 'Get Started',
+                  buttonLink: s.buttonLink || '#',
+                  linkType: 'external',
+                  pageName: '',
+                  bgColor: s.bgColor || '#2563eb',
+                  textColor: s.textColor || '#ffffff',
+                }
+              };
+            }
+            if (t === 'gallery') {
+              return {
+                id,
+                type: 'gallery',
+                props: {
+                  title: s.title || 'Image Gallery',
+                  columns: 3,
+                  images: Array.isArray(s.images) 
+                    ? s.images.map(img => typeof img === 'string' ? img : (img.url || img))
+                    : ['https://picsum.photos/seed/1/400/300', 'https://picsum.photos/seed/2/400/300', 'https://picsum.photos/seed/3/400/300'],
+                  bgColor: s.bgColor || '#ffffff',
+                  textColor: s.textColor || '#374151',
+                }
+              };
+            }
+            if (t === 'newsletter') {
+              return {
+                id,
+                type: 'newsletter',
+                props: {
+                  title: s.title || 'Join our newsletter',
+                  description: s.subtitle || s.description || 'Get updates in your inbox.',
+                  placeholder: 'you@example.com',
+                  ctaText: s.buttonText || 'Subscribe',
+                  bgColor: s.bgColor || '#f3f4f6',
+                  textColor: s.textColor || '#1f2937',
+                }
+              };
+            }
             if (t === 'footer') {
               return {
                 id,

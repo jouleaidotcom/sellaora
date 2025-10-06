@@ -310,13 +310,33 @@ const CollectionComponent = ({ component, onUpdate }) => {
   };
   return (
     <div className="bg-white p-8">
-      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6 text-center" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {items.map((it, i) => (
-          <div key={i} className="border rounded p-4">
-            <img src={it.image} alt={it.title} className="w-full h-40 object-cover rounded mb-3" />
-            <EditableText value={it.title} onChange={(v) => updateItem(i, 'title', v)} className="font-semibold" />
-            <EditableText value={it.price} onChange={(v) => updateItem(i, 'price', v)} className="text-gray-600" />
+          <div key={i} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <img 
+              src={it.image} 
+              alt={it.name || it.title} 
+              className="w-full h-40 object-cover rounded mb-3" 
+            />
+            <EditableText 
+              value={it.name || it.title || 'Product Name'} 
+              onChange={(v) => updateItem(i, 'name', v)} 
+              className="font-semibold mb-1" 
+            />
+            <EditableText 
+              value={it.price} 
+              onChange={(v) => updateItem(i, 'price', v)} 
+              className="text-lg font-bold text-green-600 mb-2" 
+            />
+            {it.description && (
+              <EditableText 
+                value={it.description} 
+                onChange={(v) => updateItem(i, 'description', v)} 
+                className="text-sm text-gray-600" 
+                multiline 
+              />
+            )}
           </div>
         ))}
       </div>
@@ -332,13 +352,26 @@ const TestimonialsComponent = ({ component, onUpdate }) => {
     onUpdate(component.id, { items: newItems });
   };
   return (
-    <div className="bg-white p-8">
-      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6" />
-      <div className="grid md:grid-cols-2 gap-6">
+    <div className="bg-gray-50 p-8">
+      <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6 text-center" />
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         {items.map((it, i) => (
-          <div key={i} className="border rounded p-4">
-            <EditableText value={it.quote} onChange={(v) => updateItem(i, 'quote', v)} className="italic mb-2" />
-            <EditableText value={it.author} onChange={(v) => updateItem(i, 'author', v)} className="text-gray-600" />
+          <div key={i} className="bg-white border rounded-lg p-6 shadow-sm">
+            <div className="text-yellow-400 mb-2">{'⭐'.repeat(it.rating || 5)}</div>
+            <EditableText 
+              value={it.text || it.quote || 'Great experience!'} 
+              onChange={(v) => updateItem(i, 'text', v)} 
+              className="italic mb-4 text-gray-700" 
+              multiline 
+            />
+            <div className="flex items-center gap-3">
+              {it.avatar && <img src={it.avatar} alt={it.name} className="w-8 h-8 rounded-full" />}
+              <EditableText 
+                value={it.name || it.author || 'Customer'} 
+                onChange={(v) => updateItem(i, 'name', v)} 
+                className="font-medium text-gray-900" 
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -347,31 +380,63 @@ const TestimonialsComponent = ({ component, onUpdate }) => {
 };
 
 const PricingComponent = ({ component, onUpdate }) => {
-  const { title, plans } = component.props;
+  const { title, items } = component.props;
+  const plans = items || []; // Support both 'items' (AI) and 'plans' (editor) fields
+  
   const updateFeature = (pi, fi, value) => {
     const newPlans = [...plans];
     newPlans[pi].features[fi] = value;
-    onUpdate(component.id, { plans: newPlans });
+    onUpdate(component.id, { items: newPlans });
   };
+  
+  const updatePlan = (pi, field, value) => {
+    const newPlans = [...plans];
+    newPlans[pi][field] = value;
+    onUpdate(component.id, { items: newPlans });
+  };
+  
   return (
     <div className="bg-white p-8">
       <EditableText value={title} onChange={(v) => onUpdate(component.id, { title: v })} className="text-3xl font-bold mb-6 text-center" />
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((p, i) => (
-          <div key={i} className="border rounded p-6 text-center">
-            <EditableText value={p.name} onChange={(v) => {
-              const np = [...plans]; np[i].name = v; onUpdate(component.id, { plans: np });
-            }} className="text-xl font-semibold" />
-            <EditableText value={p.price} onChange={(v) => { const np = [...plans]; np[i].price = v; onUpdate(component.id, { plans: np }); }} className="text-3xl font-bold my-2" />
-            <ul className="text-left space-y-1">
-              {p.features.map((f, fi) => (
+          <div key={i} className={`border-2 rounded-lg p-6 text-center ${
+            p.featured ? 'border-blue-500 bg-blue-50 relative' : 'border-gray-200'
+          }`}>
+            {p.featured && (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium">
+                Popular
+              </div>
+            )}
+            <EditableText 
+              value={p.name} 
+              onChange={(v) => updatePlan(i, 'name', v)} 
+              className="text-xl font-semibold mb-2" 
+            />
+            <EditableText 
+              value={p.price} 
+              onChange={(v) => updatePlan(i, 'price', v)} 
+              className="text-3xl font-bold my-4 text-blue-600" 
+            />
+            <ul className="text-left space-y-2 mb-6">
+              {(p.features || []).map((f, fi) => (
                 <li key={fi} className="flex items-start gap-2">
-                  <span>✔</span>
-                  <EditableText value={f} onChange={(v) => updateFeature(i, fi, v)} className="flex-1" />
+                  <span className="text-green-500">✓</span>
+                  <EditableText 
+                    value={f} 
+                    onChange={(v) => updateFeature(i, fi, v)} 
+                    className="flex-1 text-sm" 
+                  />
                 </li>
               ))}
             </ul>
-            <button disabled className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Choose</button>
+            <EditableText 
+              value={p.buttonText || 'Choose Plan'} 
+              onChange={(v) => updatePlan(i, 'buttonText', v)} 
+              className={`w-full py-3 px-4 rounded font-medium cursor-pointer ${
+                p.featured ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'
+              }`} 
+            />
           </div>
         ))}
       </div>
@@ -380,20 +445,34 @@ const PricingComponent = ({ component, onUpdate }) => {
 };
 
 const CTAComponent = ({ component, onUpdate, onNavigatePage }) => {
-  const { heading, subheading, buttonText } = component.props;
+  const { heading, subheading, buttonText, bgColor = '#2563eb', textColor = '#ffffff' } = component.props;
   return (
-    <div className="bg-indigo-600 text-white text-center p-12">
-      <EditableText value={heading} onChange={(v) => onUpdate(component.id, { heading: v })} className="text-4xl font-bold" />
-      <EditableText value={subheading} onChange={(v) => onUpdate(component.id, { subheading: v })} className="opacity-90 mt-2" />
+    <div className="text-center p-12" style={{ backgroundColor: bgColor, color: textColor }}>
+      <EditableText 
+        value={heading} 
+        onChange={(v) => onUpdate(component.id, { heading: v })} 
+        className="text-4xl font-bold mb-2" 
+        style={{ color: textColor }}
+      />
+      <EditableText 
+        value={subheading} 
+        onChange={(v) => onUpdate(component.id, { subheading: v })} 
+        className="opacity-90 mb-6 text-lg" 
+        style={{ color: textColor }}
+      />
       <button
-        className="mt-6 bg-white text-indigo-700 px-6 py-3 rounded font-semibold cursor-pointer"
+        className="bg-white text-gray-900 px-8 py-3 rounded-lg font-semibold cursor-pointer hover:bg-gray-100 transition-colors"
         onClick={(e) => {
           e.stopPropagation();
           const { linkType, pageName } = component.props;
           if (onNavigatePage && linkType === 'page' && pageName) onNavigatePage(pageName);
         }}
       >
-        {buttonText}
+        <EditableText 
+          value={buttonText} 
+          onChange={(v) => onUpdate(component.id, { buttonText: v })} 
+          className="font-semibold"
+        />
       </button>
     </div>
   );
