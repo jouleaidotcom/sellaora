@@ -152,7 +152,7 @@ export const productAPI = {
 
   listByStore: async (storeId, params = {}) => {
     const clean = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      Object.entries(params).filter(([v]) => v !== undefined && v !== null && v !== '')
     );
     const query = new URLSearchParams(clean).toString();
     const qs = query ? `?${query}` : '';
@@ -222,7 +222,7 @@ export const teamAPI = {
   },
 };
 
-export default { authAPI, storeAPI, productAPI, teamAPI };
+
 // Image upload API functions
 export const uploadAPI = {
   uploadImages: async (files) => {
@@ -292,4 +292,4 @@ export const uploadAPI = {
   },
 };
 
-export default { authAPI, storeAPI, productAPI, uploadAPI };
+export default { authAPI, storeAPI, productAPI, uploadAPI, teamAPI };
