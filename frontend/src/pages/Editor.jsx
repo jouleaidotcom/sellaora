@@ -54,6 +54,9 @@ const Editor = () => {
         const incomingProducts = Array.isArray(payload.products) ? payload.products : [];
         setProductList(incomingProducts);
 
+        if (payload.store && payload.store.storeName) {
+          setStoreName(payload.store.storeName);
+        }
         // Attempt to use parsed layout -> components, otherwise default to empty
         let comps = [];
         const pageList = [];
