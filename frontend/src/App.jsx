@@ -53,6 +53,14 @@ function App() {
           } 
         />
         <Route 
+          path="/dashboard/store/:storeId/editor" 
+          element={
+            <ProtectedRoute>
+              <Editor />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/dashboard/org/:teamId/settings" 
           element={
             <ProtectedRoute>
