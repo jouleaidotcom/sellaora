@@ -78,6 +78,21 @@ const toSlug = (name = '') => String(name)
   .replace(/[^a-z0-9]+/g, '-')
   .replace(/^-+|-+$/g, '');
 
+const toHashPath = (p = '/') => {
+  const path = String(p || '/').startsWith('/') ? p : '/' + String(p || '/');
+  return '#' + path;
+};
+
+const linkToHref = (link) => {
+  if (!link) return '#/';
+  if (link.pageName) return toHashPath('/' + toSlug(link.pageName));
+  if (typeof link.url === 'string') {
+    if (link.url.startsWith('/')) return toHashPath(link.url);
+    return link.url; // external http(s) or anchors
+  }
+  return '#/';
+};
+
 const Section = ({ section }) => {
   const {
     type,
@@ -101,7 +116,7 @@ const Section = ({ section }) => {
   };
 
   const renderContent = () => {
-    switch (type) {
+    switch ((type || '').toLowerCase()) {
       case 'navbar':
         return (
           <nav style={{ padding: '1rem 0' }}>
@@ -109,8 +124,7 @@ const Section = ({ section }) => {
               <h2 style={{ color: textColor, margin: 0 }}>{content.logo}</h2>
               <div style={{ display: 'flex', gap: '2rem' }}>
                 {content.links?.map((link, index) => {
-                  const isPage = link?.type === 'page' || !!link?.pageName;
-                  const href = isPage ? ('#/' + toSlug(link.pageName || link.text || '')) : (link?.url || '#');
+                  const href = linkToHref(link) || '#/';
                   return (
                     <a key={index} href={href} style={{ color: textColor, textDecoration: 'none' }}>
                       {link.text}
@@ -132,7 +146,7 @@ const Section = ({ section }) => {
               {content.subtitle}
             </p>
             {content.buttonText && (
-              <a href={content.buttonLink || '#'} style={{
+              <a href={linkToHref({ url: content.buttonLink })} style={{
                 display: 'inline-block',
                 backgroundColor: '#ff6b6b',
                 color: 'white',
@@ -164,6 +178,113 @@ const Section = ({ section }) => {
             </div>
           </div>
         );
+
+      case 'collection':
+      case 'products': {
+        const items = Array.isArray(content.items) ? content.items : (Array.isArray(content.products) ? content.products : []);
+        return (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+            {content.title && (
+              <h2 style={{ textAlign: 'center', fontSize: '2.2rem', marginBottom: '2rem', color: textColor }}>{content.title}</h2>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+              {items.map((p, i) => (
+                <div key={i} style={{ background: 'white', borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
+                  {p.image && <img src={p.image} alt={p.name} style={{ width: '100%', height: 180, objectFit: 'cover' }} />}
+                  <div style={{ padding: '1rem' }}>
+                    <div style={{ fontWeight: 600, color: '#111827' }}>{p.name}</div>
+                    {p.description && <div style={{ fontSize: 14, color: '#4b5563', marginTop: 4 }}>{p.description}</div>}
+                    <div style={{ marginTop: 8, fontWeight: 600, color: '#111827' }}>{p.price}</div>
+                    <button style={{ marginTop: 10, background: '#10b981', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>Add to cart</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'testimonials': {
+        const items = Array.isArray(content.items) ? content.items : [];
+        return (
+          <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px' }}>
+            {content.title && <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '1.5rem', color: textColor }}>{content.title}</h2>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+              {items.map((t, i) => (
+                <div key={i} style={{ background: 'white', borderRadius: 10, padding: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {t.avatar && <img src={t.avatar} alt={t.name} style={{ width: 40, height: 40, borderRadius: '50%' }} />}
+                    <div style={{ fontWeight: 600 }}>{t.name}</div>
+                  </div>
+                  <div style={{ marginTop: 8, color: '#374151' }}>{t.text}</div>
+                  {t.rating && <div style={{ marginTop: 6, color: '#f59e0b' }}>{'★'.repeat(Math.max(1, Math.min(5, Number(t.rating) || 5)))}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'pricing': {
+        const items = Array.isArray(content.items) ? content.items : [];
+        return (
+          <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px' }}>
+            {content.title && <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '1.5rem', color: textColor }}>{content.title}</h2>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+              {items.map((plan, i) => (
+                <div key={i} style={{ background: 'white', borderRadius: 10, padding: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', border: plan.featured ? '2px solid #10b981' : '1px solid #e5e7eb' }}>
+                  <div style={{ fontWeight: 700, fontSize: 18 }}>{plan.name}</div>
+                  <div style={{ marginTop: 6, fontSize: 24, fontWeight: 700 }}>{plan.price}</div>
+                  <ul style={{ marginTop: 8, paddingLeft: 18, color: '#4b5563' }}>
+                    {(plan.features || []).map((f, idx) => (<li key={idx}>{f}</li>))}
+                  </ul>
+                  {plan.buttonText && <a href={linkToHref({ url: plan.buttonLink })} style={{ display: 'inline-block', marginTop: 10, background: '#111827', color: '#fff', padding: '8px 12px', borderRadius: 6, textDecoration: 'none' }}>{plan.buttonText}</a>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'cta':
+        return (
+          <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto', padding: '0 20px' }}>
+            <h2 style={{ fontSize: '2rem', color: textColor }}>{content.title}</h2>
+            {content.subtitle && <p style={{ marginTop: 8, color: textColor }}>{content.subtitle}</p>}
+            {content.buttonText && (
+              <a href={linkToHref({ url: content.buttonLink })} style={{ display: 'inline-block', marginTop: 16, background: '#10b981', color: '#000', padding: '10px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>{content.buttonText}</a>
+            )}
+          </div>
+        );
+
+      case 'gallery': {
+        const images = Array.isArray(content.images) ? content.images : [];
+        return (
+          <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 20px' }}>
+            {content.title && <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '1.5rem', color: textColor }}>{content.title}</h2>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              {images.map((img, i) => (
+                <figure key={i} style={{ background: 'white', borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <img src={img.url} alt={img.caption || 'Image'} style={{ width: '100%', height: 200, objectFit: 'cover' }} />
+                  {img.caption && <figcaption style={{ padding: '0.5rem 0.75rem', color: '#4b5563' }}>{img.caption}</figcaption>}
+                </figure>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'newsletter':
+        return (
+          <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto', padding: '0 20px' }}>
+            <h3 style={{ fontSize: '1.5rem', color: textColor }}>{content.title || 'Stay Updated'}</h3>
+            {content.subtitle && <p style={{ marginTop: 6, color: textColor }}>{content.subtitle}</p>}
+            <form onSubmit={(e) => e.preventDefault()} style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <input type="email" required placeholder="you@example.com" style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 6, minWidth: 240 }} />
+              <button type="submit" style={{ background: '#111827', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: 6, cursor: 'pointer' }}>{content.buttonText || 'Subscribe'}</button>
+            </form>
+          </div>
+        );
       
       case 'textblock':
         return (
@@ -191,8 +312,7 @@ const Section = ({ section }) => {
                 <div>
                   <h4 style={{ marginBottom: '1rem', color: textColor }}>Links</h4>
                   {content.links.map((link, index) => {
-                    const isPage = link?.type === 'page' || !!link?.pageName;
-                    const href = isPage ? ('#/' + toSlug(link.pageName || link.text || '')) : (link?.url || '#');
+                    const href = linkToHref(link) || '#/';
                     return (
                       <div key={index} style={{ marginBottom: '0.5rem' }}>
                         <a href={href} style={{ color: textColor, textDecoration: 'none' }}>
@@ -208,13 +328,8 @@ const Section = ({ section }) => {
         );
       
       default:
-        return (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-            <pre style={{ color: textColor }}>{
-JSON.stringify(content, null, 2)
-}</pre>
-          </div>
-        );
+        // For unknown section types, render nothing to avoid raw JSON output
+        return null;
     }
   };
 
@@ -518,7 +633,7 @@ function generateAppComponent(buildDir, jsonLayout) {
 
   const pages = Array.isArray(jsonLayout?.pages) && jsonLayout.pages.length
     ? jsonLayout.pages
-    : [{ name: 'Home', sections: Array.isArray(jsonLayout?.sections) ? jsonLayout.sections : [] }];
+    : [{ name: 'Home', path: '/', sections: Array.isArray(jsonLayout?.sections) ? jsonLayout.sections : [] }];
 
   const pagesLiteral = JSON.stringify(pages, null, 2);
 
@@ -528,6 +643,15 @@ import Section from './components/Section';
 import './App.css';
 
 const toSlug = (name = '') => String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+const normalizePath = (p, name) => {
+  if (typeof p === 'string' && p.trim()) {
+    const v = p.trim();
+    return v.startsWith('/') ? v : '/' + v;
+  }
+  const slug = '/' + toSlug(name || 'page');
+  return slug;
+};
 
 const PAGES = ${pagesLiteral};
 
@@ -541,18 +665,22 @@ const Page = ({ sections = [] }) => (
 
 function App() {
   const home = PAGES[0];
+  const homePath = normalizePath(home?.path, home?.name);
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Navigate to={'/' + toSlug(home?.name || 'home')} replace />} />
-        {PAGES.map((p, i) => (
-          <Route
-            key={i}
-            path={'/' + toSlug(p?.name || ('page-' + (i + 1)))}
-            element={<Page sections={Array.isArray(p?.sections) ? p.sections : []} />}
-          />
-        ))}
-        <Route path="*" element={<Navigate to={'/' + toSlug(home?.name || 'home')} replace />} />
+        <Route path="/" element={<Navigate to={homePath} replace />} />
+        {PAGES.map((p, i) => {
+          const routePath = normalizePath(p?.path, p?.name || ('page-' + (i + 1)));
+          return (
+            <Route
+              key={i}
+              path={routePath}
+              element={<Page sections={Array.isArray(p?.sections) ? p.sections : []} />}
+            />
+          );
+        })}
+        <Route path="*" element={<Navigate to={homePath} replace />} />
       </Routes>
     </HashRouter>
   );
