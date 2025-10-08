@@ -17,6 +17,11 @@ const toSlug = (name) =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
+const isOwnerOrAdmin = async (teamId, userId) => {
+  const m = await TeamMembership.findOne({ teamId, userId });
+  return !!m && (m.role === 'owner' || m.role === 'admin');
+};
+
 // Create a team
 // POST /api/teams
 router.post('/', auth, async (req, res) => {
@@ -41,6 +46,7 @@ router.post('/', auth, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error creating team' });
   }
 });
+
 
 // List my teams
 // GET /api/teams/my
@@ -233,6 +239,76 @@ router.delete('/:teamId/members/:userId', auth, async (req, res) => {
   } catch (err) {
     console.error('Remove/Leave team error:', err);
     res.status(500).json({ success: false, message: 'Server error removing member' });
+  }
+});
+
+// Get a team by id
+// GET /api/teams/:teamId
+router.get('/:teamId', auth, async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    if (!mongoose.isValidObjectId(teamId)) return res.status(400).json({ success: false, message: 'Invalid teamId' });
+
+    const team = await Team.findById(teamId).lean();
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const me = await TeamMembership.findOne({ teamId, userId: req.user._id });
+    if (!me) return res.status(403).json({ success: false, message: 'Forbidden' });
+
+    res.json({ success: true, data: { team } });
+  } catch (err) {
+    console.error('Get team error:', err);
+    res.status(500).json({ success: false, message: 'Server error getting team' });
+  }
+});
+
+// Update team details/settings
+// PUT /api/teams/:teamId
+router.put('/:teamId', auth, async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    if (!mongoose.isValidObjectId(teamId)) return res.status(400).json({ success: false, message: 'Invalid teamId' });
+
+    if (!(await isOwnerOrAdmin(teamId, req.user._id))) {
+      return res.status(403).json({ success: false, message: 'Only owner or admin can update team' });
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const updates = {};
+    const { name, slug, settings } = req.body;
+
+    if (typeof name === 'string' && name.trim()) updates.name = name.trim();
+
+    if (typeof slug === 'string' && slug.trim()) {
+      const slugCandidate = toSlug(slug.trim());
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slugCandidate)) {
+        return res.status(400).json({ success: false, message: 'Invalid slug format' });
+      }
+      const exists = await Team.findOne({ slug: slugCandidate, _id: { $ne: teamId } });
+      if (exists) return res.status(409).json({ success: false, message: 'Slug already in use' });
+      updates.slug = slugCandidate;
+    }
+
+    if (settings && typeof settings === 'object') {
+      const next = { ...(team.settings || {}) };
+      if (settings.assistantOptIn) {
+        const level = String(settings.assistantOptIn);
+        const allowed = ['disabled', 'schema_only', 'schema_logs'];
+        if (!allowed.includes(level)) return res.status(400).json({ success: false, message: 'Invalid assistantOptIn' });
+        next.assistantOptIn = level;
+      }
+      updates.settings = next;
+    }
+
+    Object.assign(team, updates);
+    await team.save();
+
+    res.json({ success: true, data: { team } });
+  } catch (err) {
+    console.error('Update team error:', err);
+    res.status(500).json({ success: false, message: 'Server error updating team' });
   }
 });
 

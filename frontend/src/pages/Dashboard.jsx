@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI, storeAPI, removeAuthToken } from '../utils/api';
+import { authAPI, storeAPI, teamAPI, removeAuthToken } from '../utils/api';
+import SidebarNav from '../components/SidebarNav';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [team, setTeam] = useState(null);
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createStoreLoading, setCreateStoreLoading] = useState(false);
@@ -21,6 +23,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchUserData();
     fetchStores();
+    fetchTeamData();
   }, []);
 
   const fetchUserData = async () => {
@@ -50,6 +53,19 @@ const Dashboard = () => {
     } catch (err) {
       console.error('Failed to fetch stores:', err);
       setError('Failed to load stores');
+    }
+  };
+
+  const fetchTeamData = async () => {
+    try {
+      const response = await teamAPI.myTeams();
+      const firstTeam = response?.data?.teams?.[0]?.team;
+      if (firstTeam) {
+        setTeam(firstTeam);
+      }
+    } catch (err) {
+      console.error('Failed to fetch team data:', err);
+      // Don't set error here as team data is optional for stores page
     }
   };
 
@@ -126,7 +142,7 @@ const Dashboard = () => {
             <span className="font-bold text-base tracking-tight">Sellaora</span>
           </div>
           <div className="w-px h-4 bg-neutral-700"></div>
-          <div className="text-sm text-neutral-400 font-medium">{user?.organizationName || 'Your Organization'}</div>
+          <div className="text-sm text-neutral-400 font-medium">{team?.name || 'Your Organization'}</div>
           <span className="px-2.5 py-1 bg-neutral-800/80 text-neutral-300 rounded-md text-xs font-semibold border border-neutral-700/50">Free</span>
         </div>
         <div className="flex items-center gap-2">
@@ -149,50 +165,7 @@ const Dashboard = () => {
 
       <div className="flex">
         {/* Left Sidebar */}
-        <aside className="w-56 border-r border-neutral-800 bg-neutral-900/30 min-h-[calc(100vh-48px)] p-3">
-          <nav className="space-y-0.5">
-            <button 
-              onClick={() => navigate('/dashboard')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-neutral-800/80 text-white border border-neutral-700/50 shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <span>Store</span>
-            </button>
-            <button onClick={() => navigate('/dashboard/team')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <span>Team</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-              </svg>
-              <span>Integrations</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span>Usage</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <span>Billing</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="whitespace-nowrap">Organization settings</span>
-            </button>
-          </nav>
-        </aside>
+        <SidebarNav active="store" />
 
         {/* Main Content */}
         <main className="flex-1 p-6">

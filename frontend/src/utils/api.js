@@ -194,6 +194,15 @@ export const teamAPI = {
   myTeams: async () => {
     return makeAuthenticatedRequest('/teams/my');
   },
+  getTeam: async (teamId) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}`);
+  },
+  updateTeam: async (teamId, payload) => {
+    return makeAuthenticatedRequest(`/teams/${teamId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
   listMembers: async (teamId) => {
     return makeAuthenticatedRequest(`/teams/${teamId}/members`);
   },

@@ -12,6 +12,7 @@ import StoreDashboard from './pages/dashboard/StoreDashboard'
 import Team from './pages/dashboard/Team'
 import ProtectedRoute from './components/ProtectedRoute'
 import Landing from './pages/Landing'
+import OrgSettings from './pages/dashboard/OrgSettings'
 
 function App() {
   return (
@@ -52,10 +53,10 @@ function App() {
           } 
         />
         <Route 
-          path="/dashboard/store/:storeId/editor" 
+          path="/dashboard/org/:teamId/settings" 
           element={
             <ProtectedRoute>
-              <Editor />
+              <OrgSettings />
             </ProtectedRoute>
           } 
         />
