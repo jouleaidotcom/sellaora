@@ -3,11 +3,10 @@ const Product = require('../models/Product');
 const Store = require('../models/Store');
 const authMiddleware = require('../middleware/authMiddleware');
 const ownerCheckMiddleware = require('../middleware/ownerCheckMiddleware');
+const { deleteImages } = require('../utils/cloudinary');
 
 const router = express.Router();
 
-// Create new product (must own store)
-// POST /api/products
 router.post('/', authMiddleware, ownerCheckMiddleware((req) => req.body.storeId), async (req, res) => {
   try {
     const { storeId, name, description, price, stock, images } = req.body;
@@ -16,13 +15,16 @@ router.post('/', authMiddleware, ownerCheckMiddleware((req) => req.body.storeId)
       return res.status(400).json({ success: false, message: 'storeId, name, price, and stock are required' });
     }
 
+    // Handle images - schema validation will ensure format is correct
+    const validatedImages = Array.isArray(images) ? images : [];
+
     const product = new Product({
       storeId,
       name,
       description: description || '',
       price,
       stock,
-      images: Array.isArray(images) ? images : []
+      images: validatedImages
     });
 
     await product.save();
@@ -38,14 +40,10 @@ router.post('/', authMiddleware, ownerCheckMiddleware((req) => req.body.storeId)
   }
 });
 
-// Get all products for a store (pagination, filtering, sorting)
-// GET /api/products/:storeId
-// Query params: page, limit, search, sortBy, sortDir, status
 router.get('/:storeId', async (req, res) => {
   try {
     const { storeId } = req.params;
     let { page = 1, limit = 12, search = '', sortBy = 'createdAt', sortDir = 'desc', status } = req.query;
-    // Normalize common stringified empties
     if (search === 'undefined' || search === 'null') search = '';
     if (status === 'undefined' || status === 'null') status = undefined;
 
@@ -69,7 +67,6 @@ router.get('/:storeId', async (req, res) => {
     const sort = {};
     const dir = sortDir === 'asc' ? 1 : -1;
     if (['name', 'price', 'stock', 'createdAt', 'updatedAt'].includes(sortBy)) {
-      // typo safe: map 'price,' -> 'price'
       const key = sortBy === 'price,' ? 'price' : sortBy;
       sort[key] = dir;
     } else {
@@ -89,8 +86,6 @@ router.get('/:storeId', async (req, res) => {
   }
 });
 
-// Get single product by id
-// GET /api/products/item/:id
 router.get('/item/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -102,8 +97,6 @@ router.get('/item/:id', async (req, res) => {
   }
 });
 
-// Update product (must own store)
-// PUT /api/products/:id
 router.put('/:id', authMiddleware, async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -116,8 +109,20 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
   }
 }, ownerCheckMiddleware((req) => req.product.storeId), async (req, res) => {
   try {
-const updates = (({ name, description, price, stock, images, status }) => ({ name, description, price, stock, images, status }))(req.body);
-    Object.keys(updates).forEach((key) => updates[key] === undefined && delete updates[key]);
+    const { name, description, price, stock, images, status } = req.body;
+    
+    // Build updates object, excluding undefined values
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (price !== undefined) updates.price = price;
+    if (stock !== undefined) updates.stock = stock;
+    if (status !== undefined) updates.status = status;
+    
+    // Handle images - schema validation will ensure format is correct
+    if (images !== undefined) {
+      updates.images = Array.isArray(images) ? images : [];
+    }
 
     const updated = await Product.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     res.json({ success: true, message: 'Product updated', data: { product: updated } });
@@ -131,21 +136,17 @@ const updates = (({ name, description, price, stock, images, status }) => ({ nam
   }
 });
 
-// Bulk actions on products (must own store)
-// POST /api/products/bulk { action: 'delete' | 'publish' | 'unpublish', ids: [] }
 router.post('/bulk', authMiddleware, async (req, res) => {
   try {
     const { action, ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, message: 'No product ids provided' });
     }
-    // Fetch products and verify ownership
     const products = await Product.find({ _id: { $in: ids } });
     if (products.length !== ids.length) {
       return res.status(404).json({ success: false, message: 'One or more products not found' });
     }
 
-    // Verify all belong to stores owned by the user
     const storeIds = [...new Set(products.map(p => String(p.storeId)))];
     const stores = await Store.find({ _id: { $in: storeIds }, ownerId: req.user._id });
     if (stores.length !== storeIds.length) {
@@ -153,6 +154,31 @@ router.post('/bulk', authMiddleware, async (req, res) => {
     }
 
     if (action === 'delete') {
+      const allPublicIds = [];
+      products.forEach(product => {
+        if (product.images && product.images.length > 0) {
+          const publicIds = product.images
+            .map(image => {
+              // Handle both old format (strings) and new format (objects)
+              if (typeof image === 'string') {
+                return null; // Old format doesn't have publicId
+              }
+              return image.publicId || null;
+            })
+            .filter(publicId => publicId && publicId.trim() !== '');
+          allPublicIds.push(...publicIds);
+        }
+      });
+      
+      if (allPublicIds.length > 0) {
+        try {
+          await deleteImages(allPublicIds);
+          console.log(`Bulk cleanup: removed ${allPublicIds.length} images from Cloudinary`);
+        } catch (imageDeleteError) {
+          console.warn('Failed to bulk delete images from Cloudinary:', imageDeleteError);
+        }
+      }
+      
       await Product.deleteMany({ _id: { $in: ids } });
       return res.json({ success: true, message: 'Products deleted' });
     }
@@ -172,8 +198,6 @@ router.post('/bulk', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete product (must own store)
-// DELETE /api/products/:id
 router.delete('/:id', authMiddleware, async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -186,6 +210,29 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
   }
 }, ownerCheckMiddleware((req) => req.product.storeId), async (req, res) => {
   try {
+    const product = req.product;
+    
+    if (product.images && product.images.length > 0) {
+      const publicIds = product.images
+        .map(image => {
+          // Handle both old format (strings) and new format (objects)
+          if (typeof image === 'string') {
+            return null; // Old format doesn't have publicId
+          }
+          return image.publicId || null;
+        })
+        .filter(publicId => publicId && publicId.trim() !== '');
+      
+      if (publicIds.length > 0) {
+        try {
+          await deleteImages(publicIds);
+          console.log(`Cleaned up ${publicIds.length} images for product ${product._id}`);
+        } catch (imageDeleteError) {
+          console.warn('Failed to delete images from Cloudinary:', imageDeleteError);
+        }
+      }
+    }
+    
     await Product.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Product deleted' });
   } catch (error) {
