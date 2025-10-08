@@ -168,7 +168,8 @@ const StoreChatbox = () => {
                     try {
                       const chosenThemeId = store?.theme?.id || store?.theme?.themeId || 'theme-1';
                       await storeAPI.chooseTheme(storeId, chosenThemeId);
-                      navigate(`/editor/${chosenThemeId}`);
+                      localStorage.setItem('editorStoreId', storeId);
+                      navigate(`/dashboard/store/${storeId}/editor`);
                     } catch (e) {
                       console.error('Choose theme failed', e);
                       alert('Failed to choose theme');

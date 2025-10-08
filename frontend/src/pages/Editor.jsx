@@ -9,7 +9,7 @@ import PropertiesPanel from '../components/editor/PropertiesPanel';
 import TopBar from '../components/editor/TopBar';
 
 const Editor = () => {
-  const { themeId } = useParams();
+  const { themeId, storeId } = useParams();
   const navigate = useNavigate();
   const [components, setComponents] = useState([]);
   const [componentsByPage, setComponentsByPage] = useState({});
@@ -36,8 +36,8 @@ const Editor = () => {
   useEffect(() => {
     const loadEditor = async () => {
       try {
-        const storeId = localStorage.getItem('editorStoreId');
-        if (!storeId) {
+        const effectiveStoreId = storeId || localStorage.getItem('editorStoreId');
+        if (!effectiveStoreId) {
           // fallback to mock
           setComponents([]);
           setHistory([[]]);
@@ -45,7 +45,7 @@ const Editor = () => {
           return;
         }
 
-        const res = await fetch(`/api/store/${storeId}/editor`, {
+        const res = await fetch(`/api/store/${effectiveStoreId}/editor`, {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         if (!res.ok) throw new Error('Failed to fetch editor data');
@@ -334,7 +334,7 @@ const Editor = () => {
     };
 
     loadEditor();
-  }, [themeId]);
+  }, [storeId, themeId]);
 
   const saveToHistory = useCallback((newComponents) => {
     setHistory((prev) => {
