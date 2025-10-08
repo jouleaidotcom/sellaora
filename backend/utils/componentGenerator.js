@@ -188,17 +188,22 @@ const Section = ({ section }) => {
               <h2 style={{ textAlign: 'center', fontSize: '2.2rem', marginBottom: '2rem', color: textColor }}>{content.title}</h2>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-              {items.map((p, i) => (
-                <div key={i} style={{ background: 'white', borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
-                  {p.image && <img src={p.image} alt={p.name} style={{ width: '100%', height: 180, objectFit: 'cover' }} />}
-                  <div style={{ padding: '1rem' }}>
-                    <div style={{ fontWeight: 600, color: '#111827' }}>{p.name}</div>
-                    {p.description && <div style={{ fontSize: 14, color: '#4b5563', marginTop: 4 }}>{p.description}</div>}
-                    <div style={{ marginTop: 8, fontWeight: 600, color: '#111827' }}>{p.price}</div>
-                    <button style={{ marginTop: 10, background: '#10b981', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>Add to cart</button>
-                  </div>
-                </div>
-              ))}
+              {items.map((p, i) => {
+                const slug = toSlug(p.slug || p.name || 'product-'+i);
+                return (
+<a key={i} href={'#/product/' + slug} style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <div style={{ background: 'white', borderRadius: 10, overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.06)' }}>
+                      {p.image && <img src={p.image} alt={p.name} style={{ width: '100%', height: 180, objectFit: 'cover' }} />}
+                      <div style={{ padding: '1rem' }}>
+                        <div style={{ fontWeight: 600, color: '#111827' }}>{p.name}</div>
+                        {p.description && <div style={{ fontSize: 14, color: '#4b5563', marginTop: 4 }}>{p.description}</div>}
+                        <div style={{ marginTop: 8, fontWeight: 600, color: '#111827' }}>{p.price}</div>
+                        <div style={{ marginTop: 10, background: '#10b981', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', textAlign: 'center' }}>View</div>
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
           </div>
         );
@@ -637,8 +642,8 @@ function generateAppComponent(buildDir, jsonLayout) {
 
   const pagesLiteral = JSON.stringify(pages, null, 2);
 
-  const appComponent = `import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+const appComponent = `import React from 'react';
+import { HashRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import Section from './components/Section';
 import './App.css';
 
@@ -653,15 +658,211 @@ const normalizePath = (p, name) => {
   return slug;
 };
 
+const parsePriceNumber = (price) => {
+  if (typeof price === 'number') return price;
+  const m = String(price || '').replace(/[^0-9.]/g, '');
+  const n = parseFloat(m);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const PAGES = ${pagesLiteral};
 
+const CATALOG = (() => {
+  const map = new Map();
+  for (const p of PAGES) {
+    for (const s of (p.sections || [])) {
+      const type = (s.type || '').toLowerCase();
+      if (type === 'collection' || type === 'products') {
+        const items = Array.isArray(s.items) ? s.items : (Array.isArray(s.products) ? s.products : []);
+        for (const item of items) {
+          const slug = toSlug(item.slug || item.name || Math.random().toString(36).slice(2));
+          if (!map.has(slug)) {
+            map.set(slug, {
+              slug,
+              name: item.name,
+              image: item.image,
+              description: item.description,
+              price: item.price,
+              priceNumber: parsePriceNumber(item.price),
+              sizes: Array.isArray(item.sizes) && item.sizes.length ? item.sizes : ['S','M','L','XL'],
+            });
+          }
+        }
+      }
+    }
+  }
+  return map;
+})();
+
 const Page = ({ sections = [] }) => (
-  <div className="App">
+  <div className=\"App\">
     {sections.map((section, idx) => (
       <Section key={idx} section={section} />
     ))}
   </div>
 );
+
+// Product detail page
+function ProductDetail() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const product = CATALOG.get(slug);
+  const [size, setSize] = React.useState(product?.sizes?.[0] || 'M');
+  const [qty, setQty] = React.useState(1);
+
+  if (!product) {
+    return <div style={{ padding: 20 }}>Product not found.</div>;
+  }
+
+  const buyNow = () => {
+    const checkout = {
+      items: [{ slug: product.slug, name: product.name, price: product.priceNumber, image: product.image, size, qty }],
+      subtotal: product.priceNumber * qty,
+      currency: /€|EUR/i.test(product.price) ? 'EUR' : /£|GBP/i.test(product.price) ? 'GBP' : 'USD',
+      createdAt: Date.now(),
+    };
+    try { localStorage.setItem('checkout', JSON.stringify(checkout)); } catch {}
+    navigate('/checkout/address');
+  };
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
+      <button onClick={() => history.back()} style={{ marginBottom: 10 }}>← Back</button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        <div>
+          <img src={product.image} alt={product.name} style={{ width: '100%', borderRadius: 12, objectFit: 'cover' }} />
+        </div>
+        <div>
+          <h1 style={{ margin: '0 0 8px', fontSize: 28 }}>{product.name}</h1>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>{product.price}</div>
+          <p style={{ color: '#4b5563' }}>{product.description}</p>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Size</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {product.sizes.map((s) => (
+                <button key={s} onClick={() => setSize(s)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: s===size ? '#111827' : '#fff', color: s===size ? '#fff' : '#111827' }}>{s}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Quantity</div>
+            <input type="number" min={1} value={qty} onChange={(e)=>setQty(Math.max(1, parseInt(e.target.value)||1))} style={{ width: 80, padding: 8, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+            <button onClick={buyNow} style={{ background: '#10b981', color: '#000', padding: '10px 16px', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Buy Now</button>
+            <button onClick={() => alert('Added to cart (demo)')} style={{ background: '#111827', color: '#fff', padding: '10px 16px', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Add to Cart</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutAddress() {
+  const navigate = useNavigate();
+  const [form, setForm] = React.useState({ name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', country: '' });
+  const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const next = () => {
+    try { localStorage.setItem('checkout_address', JSON.stringify(form)); } catch {}
+    navigate('/checkout/payment');
+  };
+
+  return (
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
+      <h2>Shipping Address</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+        <input placeholder="Full name" value={form.name} onChange={(e)=>onChange('name', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="Email" value={form.email} onChange={(e)=>onChange('email', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="Phone" value={form.phone} onChange={(e)=>onChange('phone', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="Address" value={form.address} onChange={(e)=>onChange('address', e.target.value)} style={{ gridColumn: '1 / span 2', padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="City" value={form.city} onChange={(e)=>onChange('city', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="State" value={form.state} onChange={(e)=>onChange('state', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="ZIP" value={form.zip} onChange={(e)=>onChange('zip', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+        <input placeholder="Country" value={form.country} onChange={(e)=>onChange('country', e.target.value)} style={{ padding: 10, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+      </div>
+      <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
+        <button onClick={()=>history.back()} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #e5e7eb' }}>Back</button>
+        <button onClick={next} style={{ background: '#10b981', color: '#000', padding: '10px 16px', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Continue to Payment</button>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutPayment() {
+  const navigate = useNavigate();
+  let checkout = null;
+  try { checkout = JSON.parse(localStorage.getItem('checkout') || 'null'); } catch {}
+  let address = null;
+  try { address = JSON.parse(localStorage.getItem('checkout_address') || 'null'); } catch {}
+
+  if (!checkout) return <div style={{ padding: 20 }}>No checkout in progress.</div>;
+
+  const pay = (method) => {
+    const orderId = Math.random().toString(36).slice(2, 10).toUpperCase();
+    try { localStorage.setItem('checkout_order', JSON.stringify({ orderId, method })); } catch {}
+    navigate('/checkout/success');
+  };
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: 20 }}>
+      <h2>Payment</h2>
+      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+        <div>
+          <h4>Order Summary</h4>
+          {checkout.items.map((it, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', borderBottom: '1px solid #e5e7eb', padding: '8px 0' }}>
+              <img src={it.image} alt={it.name} style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{it.name}</div>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>Size: {it.size} • Qty: {it.qty}</div>
+              </div>
+<div style={{ fontWeight: 700 }}>{'$' + (it.price * it.qty).toFixed(2)}</div>
+            </div>
+          ))}
+          <div style={{ textAlign: 'right', marginTop: 8 }}>
+<div>Subtotal: <b>{'$' + checkout.subtotal.toFixed(2)}</b></div>
+            <div>Shipping: <b>Free</b></div>
+<div style={{ fontSize: 18, marginTop: 6 }}>Total: <b>{'$' + checkout.subtotal.toFixed(2)}</b></div>
+          </div>
+        </div>
+        <div>
+          <h4>Pay</h4>
+          <button onClick={()=>pay('cod')} style={{ width: '100%', marginTop: 8, padding: '10px 16px', borderRadius: 8, border: '1px solid #e5e7eb' }}>Cash on Delivery</button>
+          <button onClick={()=>pay('card-mock')} style={{ width: '100%', marginTop: 8, background: '#111827', color: '#fff', padding: '10px 16px', border: 'none', borderRadius: 8 }}>Pay with Card (Mock)</button>
+          {address && (
+            <div style={{ marginTop: 16, fontSize: 12, color: '#6b7280' }}>
+              Shipping to: {address.name}, {address.address}, {address.city}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutSuccess() {
+  let order = null;
+  try { order = JSON.parse(localStorage.getItem('checkout_order') || 'null'); } catch {}
+  React.useEffect(()=>{
+    // Clear after success (keep order id visible)
+    try {
+      localStorage.removeItem('checkout');
+      localStorage.removeItem('checkout_address');
+    } catch {}
+  }, []);
+  return (
+    <div style={{ maxWidth: 700, margin: '0 auto', padding: 20, textAlign: 'center' }}>
+      <h2>Thank you! 🎉</h2>
+      <p>Your order has been placed successfully.</p>
+      {order?.orderId && <p style={{ marginTop: 8 }}>Order ID: <b>{order.orderId}</b></p>}
+      <a href="#/" style={{ display: 'inline-block', marginTop: 16, background: '#10b981', color: '#000', padding: '10px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 700 }}>Continue shopping</a>
+    </div>
+  );
+}
 
 function App() {
   const home = PAGES[0];
@@ -680,6 +881,10 @@ function App() {
             />
           );
         })}
+        <Route path="/product/:slug" element={<ProductDetail />} />
+        <Route path="/checkout/address" element={<CheckoutAddress />} />
+        <Route path="/checkout/payment" element={<CheckoutPayment />} />
+        <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="*" element={<Navigate to={homePath} replace />} />
       </Routes>
     </HashRouter>
