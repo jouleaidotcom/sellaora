@@ -680,6 +680,30 @@ const PAGES = ${pagesLiteral};
 
 const STORE_NAME = '${storeName}';
 
+// Authentication utilities
+const AUTH_KEY = 'customer_auth';
+
+const getAuthUser = () => {
+  try {
+    const stored = localStorage.getItem(AUTH_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setAuthUser = (user) => {
+  try {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+  } catch {}
+};
+
+const clearAuthUser = () => {
+  try {
+    localStorage.removeItem(AUTH_KEY);
+  } catch {}
+};
+
 const CATALOG = (() => {
   const map = new Map();
   for (const p of PAGES) {
@@ -724,12 +748,17 @@ function ProductDetail() {
   const [qty, setQty] = React.useState(1);
   const [selectedImage, setSelectedImage] = React.useState(0);
   const [isMobile, setIsMobile] = React.useState(false);
+  const [authUser, setAuthState] = React.useState(null);
 
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  React.useEffect(() => {
+    setAuthState(getAuthUser());
   }, []);
 
   if (!product) {
@@ -746,11 +775,19 @@ function ProductDetail() {
   }
 
   const buyNow = () => {
+    // Check if user is authenticated
+    if (!authUser) {
+      // Redirect to login with return URL
+      window.location.href = '#/login?returnUrl=' + encodeURIComponent('#/product/' + product.slug);
+      return;
+    }
+
     const checkout = {
       items: [{ slug: product.slug, name: product.name, price: product.priceNumber, image: product.image, size, qty }],
       subtotal: product.priceNumber * qty,
       currency: /€|EUR/i.test(product.price) ? 'EUR' : /£|GBP/i.test(product.price) ? 'GBP' : 'USD',
       createdAt: Date.now(),
+      customer: authUser
     };
     try { localStorage.setItem('checkout', JSON.stringify(checkout)); } catch {}
     navigate('/checkout/address');
@@ -774,8 +811,23 @@ function ProductDetail() {
             <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>CONTACT</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }}>♥</div>
-            <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }}>⚲</div>
+            {authUser ? (
+              <>
+                <div style={{ fontSize: '13px', color: '#9ca3af', display: isMobile ? 'none' : 'block' }}>Hi, {authUser.name}</div>
+                <button
+                  onClick={() => {
+                    clearAuthUser();
+                    setAuthState(null);
+                    window.location.reload();
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <a href="#/login" style={{ color: '#fff', textDecoration: 'none', fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Login</a>
+            )}
             <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease', position: 'relative' }}>
               🛒
               <span style={{ position: 'absolute', top: -8, right: -8, width: 16, height: 16, background: '#dc2626', borderRadius: '50%', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>0</span>
@@ -867,7 +919,13 @@ function ProductDetail() {
                 BUY NOW
               </button>
               <button 
-                onClick={() => alert('Added to cart (demo)')} 
+                onClick={() => {
+                  if (!authUser) {
+                    window.location.href = '#/login?returnUrl=' + encodeURIComponent('#/product/' + product.slug);
+                    return;
+                  }
+                  alert('Added to cart (demo)');
+                }} 
                 style={{ 
                   width: '100%', 
                   background: 'transparent', 
@@ -908,7 +966,20 @@ function ProductDetail() {
 function CheckoutAddress() {
   const navigate = useNavigate();
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', country: '' });
+  const [authUser, setAuthState] = React.useState(null);
   const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  React.useEffect(() => {
+    const user = getAuthUser();
+    if (!user) {
+      // Redirect to login if not authenticated
+      window.location.href = '#/login?returnUrl=' + encodeURIComponent('#/checkout/address');
+      return;
+    }
+    setAuthState(user);
+    // Pre-fill form with user data
+    setForm(prev => ({ ...prev, name: user.name, phone: user.phone }));
+  }, []);
 
   const next = () => {
     try { localStorage.setItem('checkout_address', JSON.stringify(form)); } catch {}
@@ -938,11 +1009,25 @@ function CheckoutAddress() {
 
 function CheckoutPayment() {
   const navigate = useNavigate();
+  const [authUser, setAuthState] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  
   let checkout = null;
   try { checkout = JSON.parse(localStorage.getItem('checkout') || 'null'); } catch {}
   let address = null;
   try { address = JSON.parse(localStorage.getItem('checkout_address') || 'null'); } catch {}
 
+  React.useEffect(() => {
+    const user = getAuthUser();
+    if (!user) {
+      window.location.href = '#/login?returnUrl=' + encodeURIComponent('#/checkout/payment');
+      return;
+    }
+    setAuthState(user);
+    setLoading(false);
+  }, []);
+
+  if (loading) return <div style={{ padding: 20, textAlign: 'center' }}>Loading...</div>;
   if (!checkout) return <div style={{ padding: 20 }}>No checkout in progress.</div>;
 
   const pay = (method) => {
@@ -988,6 +1073,153 @@ function CheckoutPayment() {
   );
 }
 
+// Customer Login Component
+function CustomerLogin() {
+  const navigate = useNavigate();
+  const [phone, setPhone] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [isRegistering, setIsRegistering] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    // Validate inputs
+    if (!phone || !password || (isRegistering && !name)) {
+      setError('Please fill in all required fields');
+      setLoading(false);
+      return;
+    }
+
+    if (phone.length < 10) {
+      setError('Please enter a valid phone number');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Mock authentication - in real app, this would call your API
+    const userData = {
+      id: Date.now().toString(),
+      name: isRegistering ? name : 'Customer',
+      phone: phone,
+      isAuthenticated: true
+    };
+
+    setAuthUser(userData);
+    setLoading(false);
+    
+    // Redirect to checkout if that's where they came from, otherwise home
+    const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '#/';
+    window.location.href = returnUrl;
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '400px' }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #fff, #f1f5f9)', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)' }}>
+              {STORE_NAME?.[0]?.toUpperCase() || 'S'}
+            </div>
+            <span style={{ fontWeight: 800, fontSize: '24px', letterSpacing: '-0.02em' }}>{STORE_NAME}</span>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div style={{ background: '#111827', borderRadius: '16px', padding: '32px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', textAlign: 'center' }}>
+            {isRegistering ? 'Create Account' : 'Welcome Back'}
+          </h1>
+          <p style={{ color: '#9ca3af', textAlign: 'center', marginBottom: '32px', fontSize: '14px' }}>
+            {isRegistering ? 'Join us to start shopping' : 'Sign in to your account'}
+          </p>
+
+          {error && (
+            <div style={{ background: '#dc2626', color: '#fff', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', textAlign: 'center' }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            {isRegistering && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#d1d5db' }}>Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '2px solid #374151', background: '#1f2937', color: '#fff', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s' }}
+                  placeholder="Enter your full name"
+                  required={isRegistering}
+                />
+              </div>
+            )}
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#d1d5db' }}>Phone Number</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '2px solid #374151', background: '#1f2937', color: '#fff', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s' }}
+                placeholder="Enter your phone number"
+                maxLength="15"
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#d1d5db' }}>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '2px solid #374151', background: '#1f2937', color: '#fff', fontSize: '16px', outline: 'none', transition: 'border-color 0.2s' }}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ width: '100%', background: loading ? '#374151' : 'linear-gradient(135deg, #fff, #f8f9fa)', color: loading ? '#9ca3af' : '#000', border: 'none', padding: '16px 24px', borderRadius: '12px', fontSize: '16px', fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'all 0.2s ease' }}
+            >
+              {loading ? 'Please wait...' : (isRegistering ? 'Create Account' : 'Sign In')}
+            </button>
+          </form>
+
+          <div style={{ textAlign: 'center', marginTop: '24px' }}>
+            <button
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError('');
+              }}
+              style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '14px', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {isRegistering ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CheckoutSuccess() {
   let order = null;
   try { order = JSON.parse(localStorage.getItem('checkout_order') || 'null'); } catch {}
@@ -1026,6 +1258,7 @@ function App() {
           );
         })}
         <Route path="/product/:slug" element={<ProductDetail />} />
+        <Route path="/login" element={<CustomerLogin />} />
         <Route path="/checkout/address" element={<CheckoutAddress />} />
         <Route path="/checkout/payment" element={<CheckoutPayment />} />
         <Route path="/checkout/success" element={<CheckoutSuccess />} />
