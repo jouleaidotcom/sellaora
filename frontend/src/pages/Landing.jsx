@@ -50,7 +50,7 @@ export default function Landing() {
 
       {/* Trusted by */}
       <section aria-label="logos" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <p className="text-center text-xs sm:text-sm text-neutral-400">Trusted by fast-growing companies worldwide</p>
+        <p className="text-center text-xs sm:text-sm text-neutral-400">Trusted by fast-growing brands worldwide</p>
         <div className="trust-marquee mt-6 opacity-80">
           <div className="trust-marquee-track">
             {(() => {

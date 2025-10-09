@@ -119,18 +119,28 @@ const Section = ({ section }) => {
     switch ((type || '').toLowerCase()) {
       case 'navbar':
         return (
-          <nav style={{ padding: '1rem 0' }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ color: textColor, margin: 0 }}>{content.logo}</h2>
-              <div style={{ display: 'flex', gap: '2rem' }}>
+          <nav style={{ background: '#000', color: '#fff', padding: '1rem 0', borderBottom: '1px solid #374151' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: 32, height: 32, background: '#fff', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px' }}>
+                  {content.logo?.[0]?.toUpperCase() || 'S'}
+                </div>
+                <h2 style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: '18px' }}>{content.logo || 'Store'}</h2>
+              </div>
+              <div style={{ display: 'flex', gap: '32px', fontSize: '14px', fontWeight: 500 }}>
                 {content.links?.map((link, index) => {
                   const href = linkToHref(link) || '#/';
                   return (
-                    <a key={index} href={href} style={{ color: textColor, textDecoration: 'none' }}>
+                    <a key={index} href={href} style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase' }}>
                       {link.text}
                     </a>
                   );
                 })}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: 20, height: 20, cursor: 'pointer' }}>👤</div>
+                <div style={{ width: 20, height: 20, cursor: 'pointer' }}>🔍</div>
+                <div style={{ width: 20, height: 20, cursor: 'pointer' }}>🛒</div>
               </div>
             </div>
           </nav>
@@ -709,9 +719,19 @@ function ProductDetail() {
   const product = CATALOG.get(slug);
   const [size, setSize] = React.useState(product?.sizes?.[0] || 'M');
   const [qty, setQty] = React.useState(1);
+  const [selectedImage, setSelectedImage] = React.useState(0);
 
   if (!product) {
-    return <div style={{ padding: 20 }}>Product not found.</div>;
+    return (
+      <div style={{ minHeight: '100vh', background: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>😕</div>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Product Not Found</h1>
+          <p style={{ color: '#9ca3af', marginBottom: '2rem' }}>The product you're looking for doesn't exist.</p>
+          <button onClick={() => navigate('/')} style={{ background: '#fff', color: '#000', border: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>← Back to Store</button>
+        </div>
+      </div>
+    );
   }
 
   const buyNow = () => {
@@ -725,35 +745,148 @@ function ProductDetail() {
     navigate('/checkout/address');
   };
 
-  return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
-      <button onClick={() => history.back()} style={{ marginBottom: 10 }}>← Back</button>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div>
-          <img src={product.image} alt={product.name} style={{ width: '100%', borderRadius: 12, objectFit: 'cover' }} />
-        </div>
-        <div>
-          <h1 style={{ margin: '0 0 8px', fontSize: 28 }}>{product.name}</h1>
-          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>{product.price}</div>
-          <p style={{ color: '#4b5563' }}>{product.description}</p>
+  const images = [product.image].filter(Boolean);
 
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Size</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {product.sizes.map((s) => (
-                <button key={s} onClick={() => setSize(s)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: s===size ? '#111827' : '#fff', color: s===size ? '#fff' : '#111827' }}>{s}</button>
-              ))}
+  return (
+    <div style={{ minHeight: '100vh', background: '#000', color: '#fff' }}>
+      {/* Navigation */}
+      <nav style={{ background: '#000', borderBottom: '1px solid rgba(55, 65, 81, 0.5)', padding: '20px 0', backdropFilter: 'blur(8px)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #fff, #f1f5f9)', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '16px', boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)' }}>S</div>
+            <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em' }}>Store</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '40px', fontSize: '13px', fontWeight: 600 }}>
+            <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>HOME</a>
+            <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>COLLECTION</a>
+            <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>ABOUT</a>
+            <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>CONTACT</a>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }}>♥</div>
+            <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }}>⚲</div>
+            <div style={{ width: 20, height: 20, cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease', position: 'relative' }}>
+              🛒
+              <span style={{ position: 'absolute', top: -8, right: -8, width: 16, height: 16, background: '#dc2626', borderRadius: '50%', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff' }}>0</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Product Detail */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '80px', alignItems: 'start' }}>
+          {/* Product Images */}
+          <div style={{ position: 'sticky', top: '20px' }}>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px', fontWeight: 500 }}>1 / 1</div>
+            <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', background: '#111827', aspectRatio: '1/1' }}>
+              <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: 'none', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}>♡</button>
             </div>
           </div>
 
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Quantity</div>
-            <input type="number" min={1} value={qty} onChange={(e)=>setQty(Math.max(1, parseInt(e.target.value)||1))} style={{ width: 80, padding: 8, borderRadius: 8, border: '1px solid #e5e7eb' }} />
-          </div>
+          {/* Product Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingTop: '8px' }}>
+            <div>
+              <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 20px 0', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{product.name}</h1>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
+                <span style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)' }}>LAUNCHING SALE</span>
+                <span style={{ background: 'linear-gradient(135deg, #ea580c, #c2410c)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '20px', letterSpacing: '0.3px', boxShadow: '0 2px 8px rgba(234, 88, 12, 0.3)' }}>Hurry up! Only few left</span>
+              </div>
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-            <button onClick={buyNow} style={{ background: '#10b981', color: '#000', padding: '10px 16px', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Buy Now</button>
-            <button onClick={() => alert('Added to cart (demo)')} style={{ background: '#111827', color: '#fff', padding: '10px 16px', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Add to Cart</button>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px' }}>
+                <span style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{product.price}</span>
+              </div>
+              
+              <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '32px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>ALL TAXES ARE INCLUDED IN MRP, SHIPPING AND DUTIES CALCULATED AT CHECKOUT</p>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>SIZE: <span style={{ fontWeight: 800 }}>{size}</span></span>
+                <button style={{ fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500, transition: 'color 0.2s ease' }}>SIZING GUIDE</button>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap' }}>
+                {product.sizes.map((s) => (
+                  <button 
+                    key={s} 
+                    onClick={() => setSize(s)} 
+                    style={{ 
+                      padding: '14px 20px', 
+                      borderRadius: '12px', 
+                      border: s === size ? '2px solid #fff' : '2px solid #374151', 
+                      background: s === size ? '#fff' : 'transparent', 
+                      color: s === size ? '#000' : '#fff', 
+                      fontWeight: 700, 
+                      cursor: 'pointer', 
+                      fontSize: '14px',
+                      minWidth: '60px',
+                      transition: 'all 0.2s ease',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <button 
+                onClick={buyNow} 
+                style={{ 
+                  width: '100%', 
+                  background: 'linear-gradient(135deg, #fff, #f8f9fa)', 
+                  color: '#000', 
+                  border: 'none', 
+                  padding: '18px 32px', 
+                  borderRadius: '14px', 
+                  fontSize: '16px', 
+                  fontWeight: 800, 
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 14px rgba(255, 255, 255, 0.15)'
+                }}
+              >
+                BUY NOW
+              </button>
+              <button 
+                onClick={() => alert('Added to cart (demo)')} 
+                style={{ 
+                  width: '100%', 
+                  background: 'transparent', 
+                  color: '#fff', 
+                  border: '2px solid #374151', 
+                  padding: '18px 32px', 
+                  borderRadius: '14px', 
+                  fontSize: '16px', 
+                  fontWeight: 800, 
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                ADD TO CART
+              </button>
+            </div>
+
+            <div style={{ background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.1), rgba(59, 130, 246, 0.1))', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(8px)' }}>
+              <h4 style={{ fontWeight: 800, color: '#93c5fd', marginBottom: '12px', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>AVAILABLE OFFERS</h4>
+              <p style={{ color: '#bfdbfe', fontSize: '14px', lineHeight: '1.6', fontWeight: 500 }}>OUR LAUNCHING SALE IS LIVE NOW WITH FLAT 25% OFF. GET YOUR FAVOURITE TEES NOW.</p>
+            </div>
+
+            <div style={{ paddingTop: '32px', borderTop: '1px solid rgba(55, 65, 81, 0.5)' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#fff', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PRODUCT DETAILS</h3>
+              <p style={{ color: '#d1d5db', lineHeight: '1.7', fontSize: '15px', fontWeight: 400 }}>
+                {product.description || "A wearable saga of gothic art and defiant spirit. Step into a world where history and art collide. The " + product.name + " is a powerful statement piece designed for those who forge their own legacy. This premium tee features striking gothic designs, including an inverted classical bust on the back, a bold 'conqueror' script on the front, and intricate symbolic graphics woven into the fabric. It's a blend of ancient myth and modern street style, crafted for comfort and built to last."}
+              </p>
+            </div>
           </div>
         </div>
       </div>
