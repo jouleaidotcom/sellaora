@@ -5,8 +5,9 @@ const path = require('path');
  * Generates individual React component files for Vite project
  * @param {string} buildDir - Build directory path
  * @param {Object} jsonLayout - JSON layout structure
+ * @param {string} storeName - Name of the store
  */
-function generateComponents(buildDir, jsonLayout) {
+function generateComponents(buildDir, jsonLayout, storeName = 'Store') {
   const componentsDir = path.join(buildDir, 'src', 'components');
   
   // Ensure components directory exists
@@ -15,10 +16,10 @@ function generateComponents(buildDir, jsonLayout) {
   }
   
   // Generate universal section component that can handle any layout
-  generateUniversalSectionComponent(componentsDir);
+  generateUniversalSectionComponent(componentsDir, storeName);
   
   // Generate App.jsx
-  generateAppComponent(buildDir, jsonLayout);
+  generateAppComponent(buildDir, jsonLayout, storeName);
   
   // Generate component styles
   generateComponentStyles(buildDir);
@@ -69,7 +70,7 @@ export default Navbar;
 /**
  * Generate Universal Section component that can render any section type
  */
-function generateUniversalSectionComponent(componentsDir) {
+function generateUniversalSectionComponent(componentsDir, storeName = 'Store') {
   const universalComponent = `import React from 'react';
 
 const toSlug = (name = '') => String(name)
@@ -125,7 +126,7 @@ const Section = ({ section }) => {
                 <div style={{ width: 32, height: 32, background: '#fff', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px' }}>
                   {content.logo?.[0]?.toUpperCase() || 'S'}
                 </div>
-                <h2 style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: '18px' }}>{content.logo || 'Store'}</h2>
+                <h2 style={{ color: '#fff', margin: 0, fontWeight: 700, fontSize: '18px' }}>{content.logo || '${storeName}'}</h2>
               </div>
               <div style={{ display: 'flex', gap: '32px', fontSize: '14px', fontWeight: 500 }}>
                 {content.links?.map((link, index) => {
@@ -643,7 +644,7 @@ export default TextSection;
 /**
  * Generate App.jsx with proper imports and layout
  */
-function generateAppComponent(buildDir, jsonLayout) {
+function generateAppComponent(buildDir, jsonLayout, storeName = 'Store') {
   console.log('🔍 Debug: jsonLayout received:', JSON.stringify(jsonLayout, null, 2));
 
   const pages = Array.isArray(jsonLayout?.pages) && jsonLayout.pages.length
@@ -676,6 +677,8 @@ const parsePriceNumber = (price) => {
 };
 
 const PAGES = ${pagesLiteral};
+
+const STORE_NAME = '${storeName}';
 
 const CATALOG = (() => {
   const map = new Map();
@@ -720,6 +723,14 @@ function ProductDetail() {
   const [size, setSize] = React.useState(product?.sizes?.[0] || 'M');
   const [qty, setQty] = React.useState(1);
   const [selectedImage, setSelectedImage] = React.useState(0);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   if (!product) {
     return (
@@ -753,10 +764,10 @@ function ProductDetail() {
       <nav style={{ background: '#000', borderBottom: '1px solid rgba(55, 65, 81, 0.5)', padding: '20px 0', backdropFilter: 'blur(8px)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #fff, #f1f5f9)', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '16px', boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)' }}>S</div>
-            <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em' }}>Store</span>
+            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #fff, #f1f5f9)', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '16px', boxShadow: '0 2px 8px rgba(255, 255, 255, 0.1)' }}>{STORE_NAME?.[0]?.toUpperCase() || 'S'}</div>
+            <span style={{ fontWeight: 800, fontSize: '20px', letterSpacing: '-0.02em' }}>{STORE_NAME}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '40px', fontSize: '13px', fontWeight: 600 }}>
+          <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: '40px', fontSize: '13px', fontWeight: 600 }}>
             <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>HOME</a>
             <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>COLLECTION</a>
             <a href="#/" style={{ color: '#fff', textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'color 0.2s ease' }}>ABOUT</a>
@@ -774,10 +785,10 @@ function ProductDetail() {
       </nav>
 
       {/* Product Detail */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '80px', alignItems: 'start' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '24px 16px' : '40px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: isMobile ? '40px' : '80px', alignItems: 'start' }}>
           {/* Product Images */}
-          <div style={{ position: 'sticky', top: '20px' }}>
+          <div style={{ position: isMobile ? 'static' : 'sticky', top: '20px' }}>
             <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px', fontWeight: 500 }}>1 / 1</div>
             <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', background: '#111827', aspectRatio: '1/1' }}>
               <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -788,7 +799,7 @@ function ProductDetail() {
           {/* Product Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingTop: '8px' }}>
             <div>
-              <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 20px 0', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{product.name}</h1>
+              <h1 style={{ fontSize: isMobile ? '2rem' : '2.5rem', fontWeight: 800, margin: '0 0 20px 0', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{product.name}</h1>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
                 <span style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)' }}>LAUNCHING SALE</span>
@@ -796,7 +807,7 @@ function ProductDetail() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{product.price}</span>
+                <span style={{ fontSize: isMobile ? '1.875rem' : '2.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{product.price}</span>
               </div>
               
               <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '32px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 500 }}>ALL TAXES ARE INCLUDED IN MRP, SHIPPING AND DUTIES CALCULATED AT CHECKOUT</p>
