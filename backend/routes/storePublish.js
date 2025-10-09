@@ -64,7 +64,7 @@ router.post('/:storeId/publish', authMiddleware, async (req, res) => {
     console.log('🔍 Debug: finalLayout being used:', JSON.stringify(finalLayout, null, 2));
     
     // Generate React components from JSON layout
-    generateComponents(buildDir, finalLayout);
+    generateComponents(buildDir, finalLayout, store.storeName);
     
     console.log(`📁 React project created at: ${buildDir}`);
     
