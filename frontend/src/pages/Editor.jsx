@@ -7,6 +7,7 @@ import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
 import PropertiesPanel from '../components/editor/PropertiesPanel';
 import TopBar from '../components/editor/TopBar';
+import StorePreview from '../components/store/StorePreview';
 
 const Editor = () => {
   const { themeId, storeId } = useParams();
@@ -25,6 +26,7 @@ const Editor = () => {
   const [productList, setProductList] = useState([]);
   const location = useLocation();
   const [storeName, setStoreName] = useState('');
+  const [aiPreview, setAiPreview] = useState(null); // { theme, layout }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -58,6 +60,10 @@ const Editor = () => {
         // Pull theme for consistent look with AI preview
         const themeFromStore = (payload.store && payload.store.theme) ? payload.store.theme : {};
         setTheme(themeFromStore || {});
+        // Keep an AI preview copy so the editor initially matches the chat preview
+        if (payload.layout) {
+          setAiPreview({ theme: themeFromStore || {}, layout: payload.layout });
+        }
 
         if (payload.store && payload.store.storeName) {
           setStoreName(payload.store.storeName);
@@ -797,7 +803,7 @@ const Editor = () => {
   }, [isDirty]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
       <TopBar
         storeName={location.state?.storeName || storeName}
         onUndo={handleUndo}
@@ -828,61 +834,77 @@ const Editor = () => {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <ComponentLibrary />
-
-          {htmlContent ? (
-            // Render a sandboxed iframe for safer live preview. No scripts allowed.
-            <div className="flex-1 bg-gray-50 overflow-hidden p-4">
-              <div className="max-w-7xl mx-auto py-8">
-                <div className="bg-white shadow-2xl rounded-lg overflow-hidden h-full">
-                  <iframe
-                    title="Theme Preview"
-                    sandbox=""
-                    srcDoc={htmlContent}
-                    style={{ width: '100%', height: '80vh', border: 'none' }}
-                  />
-                </div>
+        {aiPreview ? (
+          <div className="flex-1 overflow-auto p-6 bg-neutral-900/40">
+            <div className="max-w-5xl mx-auto">
+              <StorePreview theme={aiPreview.theme} layout={aiPreview.layout} />
+              <div className="mt-4 flex items-center justify-center">
+                <button
+                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                  onClick={() => setAiPreview(null)}
+                >
+                  Edit in builder
+                </button>
               </div>
             </div>
-          ) : (
-            <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <Canvas
-                components={components}
-                selectedComponent={selectedComponent}
-                onSelectComponent={setSelectedComponent}
-                onUpdateComponent={updateComponent}
-                onDeleteComponent={deleteComponent}
-                onDuplicateComponent={duplicateComponent}
-                onNavigatePage={(name) => {
-                  if (!name) return;
-                  const idx = pages.findIndex((p) => p.name === name);
-                  if (idx >= 0) {
-                    selectPage(idx);
-                  } else {
-                    // create the page if it doesn't exist
-                    const newPages = [...pages, { id: `page-${Date.now()}`, name }];
-                    const newMap = { ...componentsByPage, [name]: [] };
-                    setPages(newPages);
-                    setComponentsByPage(newMap);
-                    setTimeout(() => selectPage(newPages.length - 1), 0);
-                  }
-                }}
-                theme={theme}
-              />
-            </SortableContext>
-          )}
+          </div>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <ComponentLibrary />
 
-          <PropertiesPanel
-                selectedComponent={selectedComponent}
-                onUpdateComponent={updateComponent}
-                onDeleteComponent={deleteComponent}
-                onDuplicateComponent={duplicateComponent}
-                onClose={() => setSelectedComponent(null)}
-                pages={pages}
-                products={productList}
-              />
-        </DndContext>
+            {htmlContent ? (
+              // Render a sandboxed iframe for safer live preview. No scripts allowed.
+              <div className="flex-1 bg-gray-50 overflow-hidden p-4">
+                <div className="max-w-7xl mx-auto py-8">
+                  <div className="bg-white shadow-2xl rounded-lg overflow-hidden h-full">
+                    <iframe
+                      title="Theme Preview"
+                      sandbox=""
+                      srcDoc={htmlContent}
+                      style={{ width: '100%, height: 80vh, border: none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                <Canvas
+                  components={components}
+                  selectedComponent={selectedComponent}
+                  onSelectComponent={setSelectedComponent}
+                  onUpdateComponent={updateComponent}
+                  onDeleteComponent={deleteComponent}
+                  onDuplicateComponent={duplicateComponent}
+                  onNavigatePage={(name) => {
+                    if (!name) return;
+                    const idx = pages.findIndex((p) => p.name === name);
+                    if (idx >= 0) {
+                      selectPage(idx);
+                    } else {
+                      // create the page if it doesn't exist
+                      const newPages = [...pages, { id: `page-${Date.now()}`, name }];
+                      const newMap = { ...componentsByPage, [name]: [] };
+                      setPages(newPages);
+                      setComponentsByPage(newMap);
+                      setTimeout(() => selectPage(newPages.length - 1), 0);
+                    }
+                  }}
+                  theme={theme}
+                />
+              </SortableContext>
+            )}
+
+            <PropertiesPanel
+              selectedComponent={selectedComponent}
+              onUpdateComponent={updateComponent}
+              onDeleteComponent={deleteComponent}
+              onDuplicateComponent={duplicateComponent}
+              onClose={() => setSelectedComponent(null)}
+              pages={pages}
+              products={productList}
+            />
+          </DndContext>
+        )}
       </div>
     </div>
   );

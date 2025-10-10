@@ -1,8 +1,8 @@
 import React from 'react';
 
 // Very small, theme-aware primitives for auto rendering in the editor
-const SectionCard = ({ children }) => (
-  <div className="p-6">
+const SectionCard = ({ children, style }) => (
+  <div className="p-6" style={style}>
     {children}
   </div>
 );
@@ -64,7 +64,7 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   if (Array.isArray(s.products) || (Array.isArray(s.items) && (s.items[0]?.image || typeof s.items[0]?.price !== 'undefined'))) {
     const items = Array.isArray(s.products) ? s.products : s.items;
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
         {subtitle && <Sub>{subtitle}</Sub>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -88,7 +88,7 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   if (Array.isArray(s.plans) || (Array.isArray(s.items) && Array.isArray(s.items[0]?.features))) {
     const plans = Array.isArray(s.plans) ? s.plans : s.items;
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
         <div className="grid md:grid-cols-3 gap-4">
           {plans.map((p, i) => (
@@ -111,7 +111,7 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   if (Array.isArray(s.team)) {
     const team = s.team;
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
         {subtitle && <Sub>{subtitle}</Sub>}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -132,7 +132,7 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   if (Array.isArray(s.testimonials) || (Array.isArray(s.items) && (s.items[0]?.text || s.items[0]?.quote))) {
     const items = Array.isArray(s.testimonials) ? s.testimonials : s.items;
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
         <div className="grid md:grid-cols-2 gap-4">
           {items.map((it, i) => (
@@ -151,7 +151,7 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   if (Array.isArray(s.images)) {
     const images = s.images.map(img => (typeof img === 'string' ? img : (img.url || '')));
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {images.map((src, i) => (
@@ -189,9 +189,9 @@ const AutoSection = ({ section = {}, theme = {} }) => {
   // Text fallback
   if (s.content || s.text || subtitle || title) {
     return (
-      <SectionCard>
+      <SectionCard style={{ color: text }}>
         {title && <Title>{title}</Title>}
-        <p className="text-gray-700 whitespace-pre-wrap">{s.content || s.text || subtitle}</p>
+        <p className="whitespace-pre-wrap">{s.content || s.text || subtitle}</p>
       </SectionCard>
     );
   }

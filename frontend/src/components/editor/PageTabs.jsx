@@ -2,9 +2,9 @@ import React from 'react';
 
 const PageTabs = ({ pages, currentIndex, onSelect, onAdd, onRename, onDelete }) => {
   return (
-    <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-2">
+    <div className="bg-neutral-900 border-b border-neutral-800 px-4 py-2 flex items-center gap-2 text-neutral-200">
       {pages.map((p, idx) => (
-        <div key={p.id} className={`flex items-center gap-2 px-3 py-1 rounded cursor-pointer ${idx === currentIndex ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100'}`}>
+        <div key={p.id} className={`flex items-center gap-2 px-3 py-1 rounded cursor-pointer ${idx === currentIndex ? 'bg-emerald-900/40 text-emerald-300' : 'hover:bg-neutral-800'}`}>
           <button onClick={() => onSelect(idx)} className="text-sm font-medium">
             {p.name}
           </button>
@@ -29,7 +29,7 @@ const PageTabs = ({ pages, currentIndex, onSelect, onAdd, onRename, onDelete }) 
           )}
         </div>
       ))}
-      <button onClick={onAdd} className="ml-2 px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+      <button onClick={onAdd} className="ml-2 px-2 py-1 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-500">
         + Add page
       </button>
     </div>

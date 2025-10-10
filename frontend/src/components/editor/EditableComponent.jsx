@@ -529,7 +529,7 @@ const ButtonComponent = ({ component, onUpdate, onNavigatePage }) => {
 const EditableComponent = ({ component }) => {
   // AI-first: always render via AutoSection using the component's props.
   return (
-    <div className="bg-white">
+    <div className="bg-white text-neutral-900">
       <AutoSection section={{ type: component.type, ...(component.props || {}) }} />
     </div>
   );
