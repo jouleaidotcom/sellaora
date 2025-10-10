@@ -67,14 +67,16 @@ const StoreChatbox = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+    <div className="h-screen overflow-hidden bg-neutral-950 text-neutral-100">
 
-      {/* Hero-esque intro */}
-      <div className="max-w-4xl mx-auto pt-16 pb-6 px-6 text-center">
-        <div className="inline-block mb-3 px-3 py-1.5 bg-emerald-900/30 border border-emerald-800 rounded-full text-emerald-300 text-xs">Introducing Sellaora</div>
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Build in minutes & sell to Millions</h1>
-        <p className="text-base md:text-lg text-neutral-400">Create websites by chatting with AI. Describe what you want—see a live preview instantly.</p>
-      </div>
+      {/* Hero-esque intro - only before first message */}
+      {messages.length === 0 && (
+        <div className="max-w-4xl mx-auto pt-16 pb-6 px-6 text-center">
+          <div className="inline-block mb-3 px-3 py-1.5 bg-emerald-900/30 border border-emerald-800 rounded-full text-emerald-300 text-xs">Introducing Sellaora</div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">Build in minutes & sell to Millions</h1>
+          <p className="text-base md:text-lg text-neutral-400">Create websites by chatting with AI. Describe what you want—see a live preview instantly.</p>
+        </div>
+      )}
 
       {/* Chat Input (hero) — visible only before first message) */}
       {messages.length === 0 && (
@@ -112,15 +114,15 @@ const StoreChatbox = () => {
 
       {/* Messages & Preview */}
       {messages.length > 0 && (
-        <div className="max-w-6xl mx-auto px-6 pb-12">
-          <div className="grid md:grid-cols-2 gap-6">
+        <div className="w-full h-full px-6 py-6 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full h-full">
             {/* Chat */}
-            <div className="bg-neutral-900 rounded-2xl shadow border border-neutral-800 p-6">
+            <div className="bg-neutral-900 rounded-2xl shadow border border-neutral-800 p-6 h-full overflow-hidden">
               <div className="mb-4">
                 <h2 className="font-semibold text-neutral-100">Chat</h2>
                 <p className="text-xs text-neutral-400">Store ID: {storeId}</p>
               </div>
-              <div className="space-y-3 mb-4 max-h-96 overflow-y-auto pr-1">
+              <div className="space-y-3 mb-4 h-[calc(100%-150px)] overflow-y-auto pr-1">
                 {messages.map((m, i) => (
                   <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
                     <div className={`inline-block px-4 py-2 rounded-2xl text-sm ${
@@ -183,15 +185,15 @@ const StoreChatbox = () => {
             </div>
 
             {/* Preview */}
-            <div className="bg-transparent">
+            <div className="bg-transparent h-full overflow-hidden">
               <DeviceFrame device={device}>
-                <div className="relative">
+                <div className="relative h-full">
                   {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-start justify-start rounded-xl">
                       <PreviewSkeleton />
                     </div>
                   )}
-                  <div className={`p-4 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className={`p-4 h-full overflow-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <StorePreview theme={theme} layout={layout} />
                     {!theme && (
                       <div className="text-sm text-neutral-400">No theme yet</div>

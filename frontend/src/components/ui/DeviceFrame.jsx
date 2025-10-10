@@ -7,8 +7,8 @@ const DeviceFrame = ({ device = 'desktop', children }) => {
   const isMobile = device === 'mobile';
 
   return (
-    <div className="w-full">
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden">
+    <div className="w-full h-full flex flex-col">
+      <div className="h-full flex flex-col rounded-2xl border border-neutral-800 bg-neutral-900 shadow-xl overflow-hidden">
         {/* Top Browser chrome */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-neutral-800 bg-neutral-900">
           <div className="flex items-center gap-1.5">
@@ -20,12 +20,12 @@ const DeviceFrame = ({ device = 'desktop', children }) => {
         </div>
 
         {/* Content area with device width */}
-        <div className="w-full bg-neutral-950 p-3">
+        <div className="flex-1 min-h-0 w-full bg-neutral-950 p-3">
           <div
             className={
               isMobile
-                ? 'mx-auto bg-white rounded-xl overflow-hidden border border-neutral-200 shadow-lg w-[390px] min-h-[700px]'
-                : 'mx-auto bg-white rounded-xl overflow-hidden border border-neutral-200 shadow-lg max-w-5xl w-full'
+                ? 'mx-auto bg-white rounded-xl overflow-auto border border-neutral-200 shadow-lg w-[390px] h-full'
+                : 'mx-auto bg-white rounded-xl overflow-auto border border-neutral-200 shadow-lg max-w-5xl w-full h-full'
             }
           >
             {children}
