@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import AutoSection from '../shared/AutoSection';
 
 const EditableText = ({ value, onChange, className, style, multiline = false }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -525,34 +526,13 @@ const ButtonComponent = ({ component, onUpdate, onNavigatePage }) => {
   );
 };
 
-const EditableComponent = ({ component, onUpdate, onNavigatePage }) => {
-  const componentMap = {
-    hero: HeroComponent,
-    features: FeaturesComponent,
-    textblock: TextBlockComponent,
-    footer: FooterComponent,
-    navbar: NavbarComponent,
-    faq: FAQComponent,
-    gallery: GalleryComponent,
-    newsletter: NewsletterComponent,
-    signup: SimpleFormComponent,
-    login: SimpleFormComponent,
-    waitlist: NewsletterComponent,
-    contact: SimpleFormComponent,
-    collection: CollectionComponent,
-    testimonials: TestimonialsComponent,
-    pricing: PricingComponent,
-    cta: CTAComponent,
-    divider: DividerComponent,
-    spacer: SpacerComponent,
-    image: ImageComponent,
-    video: VideoComponent,
-    button: ButtonComponent,
-  };
-
-  const Component = componentMap[component.type] || TextBlockComponent;
-
-  return <Component component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />;
+const EditableComponent = ({ component }) => {
+  // AI-first: always render via AutoSection using the component's props.
+  return (
+    <div className="bg-white">
+      <AutoSection section={{ type: component.type, ...(component.props || {}) }} />
+    </div>
+  );
 };
 
 export default EditableComponent;

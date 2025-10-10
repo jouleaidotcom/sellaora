@@ -4,7 +4,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { useState } from 'react';
 import EditableComponent from './EditableComponent';
 
-const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onNavigatePage }) => {
+const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onNavigatePage, theme }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: component.id,
   });
@@ -23,7 +23,7 @@ const SortableItem = ({ component, isSelected, onSelect, onUpdate, onDelete, onD
         }`}
         onClick={() => onSelect(component)}
       >
-        <EditableComponent component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} />
+        <EditableComponent component={component} onUpdate={onUpdate} onNavigatePage={onNavigatePage} theme={theme} />
       </div>
     </div>
   );
@@ -37,12 +37,15 @@ const Canvas = ({
   onDeleteComponent,
   onDuplicateComponent,
   onNavigatePage,
+  theme,
 }) => {
   // Always-present droppable area so library items can be dropped onto an empty canvas
   const { setNodeRef: setCanvasRef, isOver } = useDroppable({ id: 'canvas-dropzone' });
 
+  const pageBg = theme?.backgroundColor || '#ffffff';
+
   return (
-    <div className="flex-1 bg-gray-50 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto" style={{ background: pageBg }}>
       <div className="max-w-7xl mx-auto py-8">
         <div ref={setCanvasRef} className={`bg-white shadow-2xl rounded-lg overflow-hidden ${isOver ? 'ring-2 ring-blue-400' : ''}`}>
           {components.length === 0 ? (
@@ -64,6 +67,7 @@ const Canvas = ({
                   onDelete={onDeleteComponent}
                   onDuplicate={onDuplicateComponent}
                   onNavigatePage={onNavigatePage}
+                  theme={theme}
                 />
               ))}
             </div>

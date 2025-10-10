@@ -18,6 +18,7 @@ const Editor = () => {
   const [htmlContent, setHtmlContent] = useState(null);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [history, setHistory] = useState([]);
+  const [theme, setTheme] = useState({});
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -54,6 +55,10 @@ const Editor = () => {
         const incomingProducts = Array.isArray(payload.products) ? payload.products : [];
         setProductList(incomingProducts);
 
+        // Pull theme for consistent look with AI preview
+        const themeFromStore = (payload.store && payload.store.theme) ? payload.store.theme : {};
+        setTheme(themeFromStore || {});
+
         if (payload.store && payload.store.storeName) {
           setStoreName(payload.store.storeName);
         }
@@ -62,6 +67,9 @@ const Editor = () => {
         const pageList = [];
         const byPage = {};
         try {
+          const primary = themeFromStore?.primaryColor || '#2563eb';
+          const bg = themeFromStore?.backgroundColor || '#ffffff';
+          const text = themeFromStore?.textColor || '#111827';
           const normalizeSection = (s, idx) => {
             const t = String(s.type || '').toLowerCase();
             const id = `${t || 'section'}-${idx}`;
@@ -84,23 +92,23 @@ const Editor = () => {
                         { text: 'Products', type: 'external', url: '#' },
                         { text: 'About', type: 'external', url: '#' },
                       ],
-                  bgColor: s.bgColor || '#ffffff',
-                  textColor: s.textColor || '#1f2937',
+                  bgColor: s.bgColor || bg,
+                  textColor: s.textColor || text,
                 }
               };
             }
-            if (t === 'hero') {
+            if (t === 'hero' || t.includes('hero')) {
               return {
                 id,
                 type: 'hero',
                 props: {
-                  title: s.title || 'New Hero Section',
-                  subtitle: s.subtitle || 'Add your subtitle here',
+                  title: s.title || s.heading || 'New Hero Section',
+                  subtitle: s.subtitle || s.subheading || 'Add your subtitle here',
                   buttonText: s.buttonText || 'Click Me',
                   buttonLink: s.buttonLink || '#',
-                  bgColor: s.bgColor || '#3b82f6',
+                  bgColor: s.bgColor || primary,
                   textColor: s.textColor || '#ffffff',
-                  image: s.image || s.imageUrl || '',
+                  image: s.image || s.imageUrl || s.backgroundUrl || '',
                 }
               };
             }
@@ -116,12 +124,12 @@ const Editor = () => {
                     { icon: '🎯', title: 'Feature 2', description: 'Description here' },
                     { icon: '🚀', title: 'Feature 3', description: 'Description here' },
                   ]).map(it => ({ icon: it.icon || '⭐', title: it.title || 'Feature', description: it.description || 'Description here' })),
-                  bgColor: s.bgColor || '#f9fafb',
-                  textColor: s.textColor || '#111827',
+                  bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0f172a' : '#f9fafb'),
+                  textColor: s.textColor || text,
                 }
               };
             }
-            if (t === 'collection') {
+            if (t === 'collection' || t.includes('product-grid')) {
               return {
                 id,
                 type: 'collection',
@@ -137,8 +145,33 @@ const Editor = () => {
                     image: item.image || 'https://picsum.photos/seed/default/300/200',
                     description: item.description || 'Product description'
                   })),
-                  bgColor: s.bgColor || '#ffffff',
-                  textColor: s.textColor || '#374151',
+                  bgColor: s.bgColor || bg,
+                  textColor: s.textColor || text,
+                }
+              };
+            }
+            if (t === 'categories-visual' || t.includes('categories')) {
+              const cats = Array.isArray(s.categories) ? s.categories : [];
+              return {
+                id,
+                type: 'collection',
+                props: {
+                  title: s.title || 'Categories',
+                  items: cats.map(c => ({ title: c.name || c.title, price: '', image: c.imageUrl || c.image || 'https://picsum.photos/seed/cat/300/200' })),
+                  bgColor: s.bgColor || bg,
+                  textColor: s.textColor || text,
+                }
+              };
+            }
+            if (t === 'instagram-feed' || t.includes('instagram')) {
+              const count = s.numberOfPosts || 6;
+              return {
+                id,
+                type: 'gallery',
+                props: {
+                  title: s.title || 'Instagram',
+                  columns: 3,
+                  images: Array.from({ length: Math.min(12, Math.max(1, count)) }).map((_, i) => `https://picsum.photos/seed/insta-${s.username || 'feed'}-${i}/400/300`),
                 }
               };
             }
@@ -157,8 +190,8 @@ const Editor = () => {
                     text: item.text || item.quote || 'Great experience!',
                     avatar: item.avatar || `https://picsum.photos/seed/${item.name || 'user'}/100/100`
                   })),
-                  bgColor: s.bgColor || '#f9fafb',
-                  textColor: s.textColor || '#374151',
+                  bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0f172a' : '#f9fafb'),
+                  textColor: s.textColor || text,
                 }
               };
             }
@@ -178,8 +211,8 @@ const Editor = () => {
                     buttonText: item.buttonText || 'Choose Plan',
                     featured: item.featured || false
                   })),
-                  bgColor: s.bgColor || '#ffffff',
-                  textColor: s.textColor || '#374151',
+                  bgColor: s.bgColor || bg,
+                  textColor: s.textColor || text,
                 }
               };
             }
@@ -194,7 +227,7 @@ const Editor = () => {
                   buttonLink: s.buttonLink || '#',
                   linkType: 'external',
                   pageName: '',
-                  bgColor: s.bgColor || '#2563eb',
+                  bgColor: s.bgColor || primary,
                   textColor: s.textColor || '#ffffff',
                 }
               };
@@ -209,8 +242,8 @@ const Editor = () => {
                   images: Array.isArray(s.images) 
                     ? s.images.map(img => typeof img === 'string' ? img : (img.url || img))
                     : ['https://picsum.photos/seed/1/400/300', 'https://picsum.photos/seed/2/400/300', 'https://picsum.photos/seed/3/400/300'],
-                  bgColor: s.bgColor || '#ffffff',
-                  textColor: s.textColor || '#374151',
+                  bgColor: s.bgColor || bg,
+                  textColor: s.textColor || text,
                 }
               };
             }
@@ -223,7 +256,7 @@ const Editor = () => {
                   description: s.subtitle || s.description || 'Get updates in your inbox.',
                   placeholder: 'you@example.com',
                   ctaText: s.buttonText || 'Subscribe',
-                  bgColor: s.bgColor || '#f3f4f6',
+                  bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0b1220' : '#f3f4f6'),
                   textColor: s.textColor || '#1f2937',
                 }
               };
@@ -240,21 +273,20 @@ const Editor = () => {
                     { text: 'About', url: '#' },
                     { text: 'Contact', url: '#' },
                   ]).map(l => ({ text: l.text || 'Link', url: l.url || '#' })),
-                  bgColor: s.bgColor || '#1f2937',
+                  bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0b1220' : '#1f2937'),
                   textColor: s.textColor || '#f3f4f6',
                 }
               };
             }
-            // default to textblock from common fields
+            // default: preserve unknown type and pass through properties so AutoSection can render it
             return {
               id,
-              type: 'textblock',
+              type: t || 'custom',
               props: {
-                heading: s.heading || s.title || 'Text Block Heading',
-                content: s.content || s.text || 'Add your content here. This is a flexible text block that you can customize.',
-                bgColor: s.bgColor || '#ffffff',
-                textColor: s.textColor || '#374151',
-                alignment: s.alignment || 'left',
+                ...Object.keys(s || {}).reduce((acc, key) => {
+                  if (key !== 'id' && key !== 'type') acc[key] = s[key];
+                  return acc;
+                }, {}),
               }
             };
           };
@@ -836,6 +868,7 @@ const Editor = () => {
                     setTimeout(() => selectPage(newPages.length - 1), 0);
                   }
                 }}
+                theme={theme}
               />
             </SortableContext>
           )}

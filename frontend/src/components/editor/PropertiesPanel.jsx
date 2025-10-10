@@ -180,6 +180,79 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
     </>
   );
 
+  // Generic fallback editor for unknown component types
+  const renderGenericProperties = () => {
+    // Heuristics: expose common fields if present
+    const common = [
+      ['title', 'Title'],
+      ['heading', 'Heading'],
+      ['subtitle', 'Subtitle'],
+      ['subheading', 'Subheading'],
+      ['description', 'Description'],
+      ['content', 'Content'],
+      ['buttonText', 'Button Text'],
+      ['bgColor', 'Background Color', 'color'],
+      ['textColor', 'Text Color', 'color'],
+      ['image', 'Image URL'],
+      ['imageUrl', 'Image URL'],
+      ['backgroundUrl', 'Background URL'],
+    ];
+
+    const renderCommonField = ([key, label, kind]) => {
+      const val = props[key];
+      if (val === undefined) return null;
+      if (kind === 'color' || (typeof val === 'string' && /^#([0-9a-f]{3}){1,2}$/i.test(val))) {
+        return renderColorPicker(label, val, key);
+      }
+      if (typeof val === 'string') {
+        return renderTextInput(label, val, key);
+      }
+      return null;
+    };
+
+    return (
+      <>
+        {common.map(renderCommonField)}
+        {/* Items/images quick editor when they are simple arrays */}
+        {Array.isArray(props.items) && typeof props.items[0] === 'string' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+            {props.items.map((v, i) => (
+              <input key={i} type="text" value={v} onChange={(e) => handleArrayItemChange('items', i, undefined, e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded mb-2" />
+            ))}
+            <button onClick={() => addArrayItem('items', 'New item')} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">+ Add Item</button>
+          </div>
+        )}
+
+        {Array.isArray(props.images) && typeof props.images[0] === 'string' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+            {props.images.map((v, i) => (
+              <input key={i} type="text" value={v} onChange={(e) => handleArrayItemChange('images', i, undefined, e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded mb-2" />
+            ))}
+            <button onClick={() => addArrayItem('images', 'https://picsum.photos/seed/new/400/300')} className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">+ Add Image</button>
+          </div>
+        )}
+
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Advanced (JSON)</label>
+          <textarea
+            value={JSON.stringify(props, null, 2)}
+            onChange={(e) => {
+              try {
+                const obj = JSON.parse(e.target.value);
+                // Apply a shallow merge
+                Object.keys(obj).forEach((k) => handleChange(k, obj[k]));
+              } catch {}
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded"
+            rows="10"
+          />
+        </div>
+      </>
+    );
+  };
+
   const renderFooterProperties = () => (
     <>
       {renderTextInput('Company Name', props.companyName, 'companyName', 'Your company')}
@@ -583,7 +656,7 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
     button: renderButtonProperties,
   };
 
-  const renderProperties = propertiesMap[type] || renderTextBlockProperties;
+  const renderProperties = propertiesMap[type] || renderGenericProperties;
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 flex-shrink-0 overflow-y-auto">

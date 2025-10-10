@@ -1,28 +1,460 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const Store = require('../models/Store');
 const authMiddleware = require('../middleware/authMiddleware');
 const ownerCheckMiddleware = require('../middleware/ownerCheckMiddleware');
 
 const router = express.Router();
 
-// Updated normalizeLayout - handles both single-page and multi-page layouts
+// Industry-specific design templates with different structures
+const DESIGN_ARCHETYPES = {
+  ecommerce: {
+    structure: ['hero-product', 'featured-products', 'categories', 'testimonials', 'instagram-feed', 'newsletter'],
+    pages: ['Home', 'Shop', 'Product', 'Cart', 'About'],
+    stylePresets: ['modern', 'minimal', 'bold'],
+    layouts: ['grid-heavy', 'image-focused', 'card-based']
+  },
+  saas: {
+    structure: ['hero-headline', 'features-grid', 'how-it-works', 'pricing-tiers', 'testimonials', 'cta-banner'],
+    pages: ['Home', 'Features', 'Pricing', 'About', 'Contact'],
+    stylePresets: ['professional', 'modern', 'tech'],
+    layouts: ['centered-content', 'split-screen', 'floating-cards']
+  },
+  portfolio: {
+    structure: ['hero-minimal', 'portfolio-masonry', 'about-visual', 'services', 'contact-form'],
+    pages: ['Home', 'Work', 'About', 'Services', 'Contact'],
+    stylePresets: ['minimal', 'bold', 'creative'],
+    layouts: ['masonry', 'full-bleed', 'asymmetric']
+  },
+  restaurant: {
+    structure: ['hero-image', 'menu-showcase', 'chef-story', 'gallery-food', 'reservations', 'location-map'],
+    pages: ['Home', 'Menu', 'About', 'Reservations', 'Contact'],
+    stylePresets: ['elegant', 'warm', 'luxury'],
+    layouts: ['image-driven', 'menu-focused', 'story-telling']
+  },
+  agency: {
+    structure: ['hero-bold', 'services-cards', 'case-studies', 'team', 'process-timeline', 'contact'],
+    pages: ['Home', 'Services', 'Work', 'Team', 'Contact'],
+    stylePresets: ['bold', 'creative', 'professional'],
+    layouts: ['dynamic', 'section-breaks', 'diagonal-cuts']
+  },
+  blog: {
+    structure: ['hero-banner', 'featured-posts', 'post-grid', 'categories', 'author-bio', 'newsletter'],
+    pages: ['Home', 'Blog', 'About', 'Categories', 'Contact'],
+    stylePresets: ['minimal', 'editorial', 'magazine'],
+    layouts: ['magazine', 'sidebar', 'featured-first']
+  },
+  landing: {
+    structure: ['hero-conversion', 'benefits', 'social-proof', 'faq', 'final-cta'],
+    pages: ['Home'],
+    stylePresets: ['high-contrast', 'conversion-focused', 'bold'],
+    layouts: ['single-page', 'long-scroll', 'section-anchored']
+  }
+};
+
+// Comprehensive section type library - STANDARDIZED NAMES
+const SECTION_CATALOG = `
+SECTION TYPES BY CATEGORY (use these exact type names):
+
+HERO VARIATIONS:
+- hero: Default hero with overlay (specify variant: "overlay", "minimal", "split", "gradient")
+- Type: "hero", variant: "minimal" - Clean, centered text
+- Type: "hero", variant: "split" - Split screen layout
+- Type: "hero", variant: "overlay" - Full-width with overlay text
+
+CONTENT SECTIONS:
+- features: Feature grid (specify variant: "cards", "icons-row", "alternating")
+- stats: Statistics showcase with numbers
+- process: Step-by-step process or timeline
+- about: About section with text and optional image
+- textblock: Rich text content section
+
+VISUAL SECTIONS:
+- gallery: Image gallery (specify variant: "grid", "masonry", "carousel")
+- video: Video embed section
+- categories: Category tiles with images
+
+SOCIAL PROOF:
+- testimonials: Customer testimonials (specify variant: "cards", "slider")
+- partners: Partner/client logos
+
+COMMERCE:
+- products: Product grid for e-commerce
+- pricing: Pricing tiers with features
+- services: Service offerings
+
+CONVERSION:
+- cta: Call-to-action section
+- newsletter: Email signup form
+- contact: Contact form with fields
+- location: Location/map with contact info
+
+TEAM & INFO:
+- team: Team member cards
+- faq: FAQ accordion
+
+NAVIGATION:
+- navbar: Navigation bar (usually auto-added)
+- footer: Footer section (usually auto-added)
+
+IMPORTANT: Use simple type names (e.g., "hero", "features", "testimonials") and use the "variant" property for variations.
+Example: { "type": "hero", "variant": "split", ... }
+NOT: { "type": "hero-split", ... }
+`;
+
+// Visual style variations
+const STYLE_SYSTEM = `
+STYLE PRESETS:
+- minimal: Clean, lots of whitespace, subtle colors, simple typography
+- modern: Geometric shapes, gradients, rounded corners, contemporary
+- bold: High contrast, large typography, vibrant colors, dramatic
+- elegant: Refined typography, muted colors, sophisticated spacing
+- playful: Rounded everything, bright colors, friendly tone
+- professional: Structured, corporate colors, serif fonts, formal
+- luxury: Premium feel, gold accents, premium imagery
+- tech: Futuristic, blue/purple tones, sharp edges, innovative
+- creative: Asymmetric layouts, artistic elements, unique patterns
+- editorial: Magazine-style, strong typography, image-text balance
+- brutalist: Raw, stark, unconventional, experimental
+- glass: Glassmorphism effects, transparency, blur, depth
+- neumorphic: Soft shadows, subtle elevation, tactile feel
+- gradient: Colorful gradients, vibrant, energetic
+`;
+
+const LAYOUT_PATTERNS = `
+LAYOUT ARCHITECTURES:
+- grid-heavy: Everything in grids, structured, organized
+- image-focused: Large images dominate, minimal text
+- card-based: Content in cards, clear boundaries
+- centered-content: All content centered, symmetrical
+- split-screen: Divided layouts, contrasting sections
+- floating-cards: Cards with shadows, layered
+- masonry: Pinterest-style, varying heights
+- full-bleed: Edge-to-edge imagery, immersive
+- asymmetric: Off-center, dynamic, interesting
+- magazine: Editorial layouts, columns, typography
+- single-page: All content on one page, smooth scroll
+- long-scroll: Extended single page, story-driven
+- sidebar: Content + sidebar navigation
+- section-breaks: Clear section dividers, distinct areas
+- diagonal-cuts: Angled section breaks, dynamic
+- section-anchored: Jump-to sections, navigation links
+`;
+
+function buildEnhancedPrompt(userPrompt, storeContext = {}, previousAttempts = 0) {
+  // Analyze prompt to detect industry/type
+  const promptLower = userPrompt.toLowerCase();
+  let detectedType = 'landing';
+  let keywords = [];
+  
+  if (promptLower.includes('shop') || promptLower.includes('store') || promptLower.includes('ecommerce') || promptLower.includes('coffee') || promptLower.includes('product')) {
+    detectedType = 'ecommerce';
+    keywords = ['coffee', 'shop', 'product', 'menu', 'buy'];
+  } else if (promptLower.includes('saas') || promptLower.includes('software') || promptLower.includes('app') || promptLower.includes('platform')) {
+    detectedType = 'saas';
+    keywords = ['features', 'workflow', 'automation', 'solution', 'productivity'];
+  } else if (promptLower.includes('portfolio') || promptLower.includes('designer') || promptLower.includes('photographer')) {
+    detectedType = 'portfolio';
+    keywords = ['work', 'projects', 'creative', 'showcase'];
+  } else if (promptLower.includes('restaurant') || promptLower.includes('cafe') || promptLower.includes('food') || promptLower.includes('menu')) {
+    detectedType = 'restaurant';
+    keywords = ['menu', 'chef', 'dining', 'cuisine'];
+  } else if (promptLower.includes('agency') || promptLower.includes('marketing') || promptLower.includes('consulting')) {
+    detectedType = 'agency';
+    keywords = ['services', 'team', 'solutions', 'clients'];
+  } else if (promptLower.includes('blog') || promptLower.includes('magazine') || promptLower.includes('news')) {
+    detectedType = 'blog';
+    keywords = ['articles', 'posts', 'stories', 'content'];
+  }
+
+  const archetype = DESIGN_ARCHETYPES[detectedType] || DESIGN_ARCHETYPES.landing;
+  
+  // Randomize style choices for variety
+  const randomStyle = archetype.stylePresets[Math.floor(Math.random() * archetype.stylePresets.length)];
+  const randomLayout = archetype.layouts[Math.floor(Math.random() * archetype.layouts.length)];
+  
+  // Add variation based on attempt number to avoid repeats
+  const variationSeed = previousAttempts > 0 ? `\nVARIATION ${previousAttempts + 1}: Use a completely different visual approach than before.` : '';
+  
+  const randomSeed = Math.random().toString(36).substring(7);
+  const timestamp = Date.now();
+
+  return `You are an expert web designer AI creating UNIQUE, DIVERSE website designs.
+
+${SECTION_CATALOG}
+
+${STYLE_SYSTEM}
+
+${LAYOUT_PATTERNS}
+
+DETECTED WEBSITE TYPE: ${detectedType.toUpperCase()}
+SUGGESTED STRUCTURE: ${archetype.structure.join(' → ')}
+RECOMMENDED PAGES: ${archetype.pages.join(', ')}
+STYLE DIRECTION: ${randomStyle}
+LAYOUT PATTERN: ${randomLayout}
+KEYWORDS TO EMPHASIZE: ${keywords.join(', ')}${variationSeed}
+
+CRITICAL REQUIREMENTS:
+1. The visual structure MUST match the website type (${detectedType})
+2. DO NOT use generic hero → features → testimonials for everything
+3. Each industry needs DIFFERENT section types and order
+4. For ${detectedType} specifically:
+   ${detectedType === 'ecommerce' ? '- Use product grids, category showcases, shopping features\n   - Include "Shop" page with product listings\n   - Use warm, inviting colors' : ''}
+   ${detectedType === 'saas' ? '- Use features-grid, how-it-works, pricing tiers\n   - Include "Features" and "Pricing" pages\n   - Use modern, tech-forward colors (blues, purples)' : ''}
+   ${detectedType === 'portfolio' ? '- Use masonry galleries, project showcases\n   - Include "Work" page with portfolio items\n   - Use minimal, creative styling' : ''}
+   ${detectedType === 'restaurant' ? '- Use menu showcases, food galleries, reservation forms\n   - Include "Menu" page with food items\n   - Use warm, appetizing colors' : ''}
+   ${detectedType === 'agency' ? '- Use service cards, case studies, team profiles\n   - Include "Services" and "Work" pages\n   - Use bold, professional styling' : ''}
+
+USER PROMPT: "${userPrompt}"
+RANDOMNESS: ${randomSeed}-${timestamp}
+
+OUTPUT SCHEMA (JSON only, no markdown):
+{
+  "theme": {
+    "primaryColor": "#hex",
+    "secondaryColor": "#hex",
+    "accentColor": "#hex",
+    "backgroundColor": "#hex",
+    "textColor": "#hex",
+    "bannerUrl": "",
+    "logoUrl": "",
+    "fonts": "Font1, Font2, fallback",
+    "stylePreset": "${randomStyle}",
+    "borderRadius": "sm|md|lg|xl|2xl|pill",
+    "shadow": "none|soft|medium|elevated|dramatic",
+    "layoutPattern": "${randomLayout}"
+  },
+  "layout": {
+    "pages": [
+      {
+        "name": "Page Name",
+        "path": "/path",
+        "description": "Purpose of this page",
+        "sections": [
+          {
+            "type": "hero|features|products|testimonials|pricing|gallery|stats|process|about|team|faq|cta|newsletter|contact|location|categories|partners",
+            "variant": "optional-variant-name",
+            "id": "unique-id",
+            "title": "Section Title",
+            "subtitle": "Optional subtitle",
+            ...type-specific-properties
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "siteName": "Name",
+    "description": "SEO description",
+    "industry": "${detectedType}"
+  }
+}
+
+CRITICAL SECTION RULES:
+- Use SIMPLE type names: "hero", "features", "products", "testimonials", etc.
+- Use "variant" property for variations: { "type": "hero", "variant": "split" }
+- DO NOT use compound type names like "hero-split" or "features-grid"
+- Valid types: hero, features, products, services, testimonials, pricing, gallery, stats, process, about, team, faq, cta, newsletter, contact, location, categories, partners, textblock
+- Valid variants depend on type:
+  * hero: "overlay", "split", "minimal", "gradient"
+  * features: "cards", "icons-row", "alternating"
+  * gallery: "grid", "masonry", "carousel"
+  * testimonials: "cards", "slider"
+
+SECTION VARIETY RULES:
+- Home page: Use 5-7 different section types
+- Other pages: Use 3-5 different section types
+- NEVER repeat the same section type on one page unless it's intentional (like multiple CTAs)
+- Mix visual and content sections
+- Vary the order dramatically based on website type
+
+COLOR PALETTE RULES:
+- ${detectedType === 'ecommerce' ? 'Warm, inviting (browns, oranges, warm neutrals)' : ''}
+- ${detectedType === 'saas' ? 'Modern tech (blues, purples, teals, with bright accents)' : ''}
+- ${detectedType === 'portfolio' ? 'Minimal (black, white, one accent color)' : ''}
+- ${detectedType === 'restaurant' ? 'Appetizing (reds, oranges, golds, earthy tones)' : ''}
+- ${detectedType === 'agency' ? 'Bold professional (deep blues, blacks, vibrant accents)' : ''}
+- All colors must be in hex format
+
+CONTENT RULES:
+- Use realistic content related to "${userPrompt}"
+- Image URLs: https://picsum.photos/seed/{unique-keyword}-${randomSeed}/WIDTHxHEIGHT
+- Make each section's content unique and contextual
+- Include specific details about the business/product/service
+
+EXAMPLE SECTION STRUCTURES:
+
+Hero Example:
+{
+  "type": "hero",
+  "variant": "split",
+  "id": "hero-1",
+  "title": "Your Main Headline",
+  "subtitle": "Supporting description",
+  "image": "https://picsum.photos/seed/keyword-123/1200/800",
+  "cta": {
+    "text": "Get Started",
+    "link": "/contact"
+  }
+}
+
+Products Example:
+{
+  "type": "products",
+  "variant": "cards",
+  "id": "products-1",
+  "title": "Our Products",
+  "products": [
+    {
+      "name": "Product Name",
+      "description": "Product description",
+      "price": "$19.99",
+      "image": "https://picsum.photos/seed/product-1/400/400"
+    }
+  ]
+}
+
+Features Example:
+{
+  "type": "features",
+  "variant": "cards",
+  "id": "features-1",
+  "title": "Key Features",
+  "features": [
+    {
+      "icon": "⚡",
+      "title": "Feature Name",
+      "description": "Feature description"
+    }
+  ]
+}
+
+Testimonials Example:
+{
+  "type": "testimonials",
+  "variant": "cards",
+  "id": "testimonials-1",
+  "title": "What Our Customers Say",
+  "testimonials": [
+    {
+      "text": "This is amazing!",
+      "name": "John Doe",
+      "rating": 5,
+      "avatar": "https://i.pravatar.cc/150?img=1"
+    }
+  ]
+}
+
+Categories Example (for e-commerce):
+{
+  "type": "categories",
+  "id": "categories-1",
+  "title": "Shop By Category",
+  "categories": [
+    {
+      "name": "Category Name",
+      "image": "https://picsum.photos/seed/category-1/400/400",
+      "link": "/shop/category"
+    }
+  ]
+}
+
+Generate a ${detectedType} website with a completely unique structure and design now.`;
+}
+
+// Enhanced JSON extraction
+function extractJsonString(s) {
+  if (!s) return '';
+  let t = String(s).trim();
+
+  const fenceMatch = t.match(/```(?:json|jsonc)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    t = fenceMatch[1].trim();
+  }
+
+  const firstBrace = t.indexOf('{');
+  const lastBrace = t.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    t = t.slice(firstBrace, lastBrace + 1);
+  }
+
+  return t.trim();
+}
+
+// Robust JSON parser
+function tryParseJsonWithRepairs(src) {
+  try {
+    return JSON.parse(src);
+  } catch {}
+
+  let fixed = src.replace(/,\s*(?=[}\]])/g, '');
+  try {
+    return JSON.parse(fixed);
+  } catch {}
+
+  const chars = fixed.split('');
+  let inStr = false;
+  let escaped = false;
+  const stack = [];
+  
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (inStr) {
+      if (escaped) {
+        escaped = false;
+      } else if (c === '\\') {
+        escaped = true;
+      } else if (c === '"') {
+        inStr = false;
+      }
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === '{' || c === '[') {
+      stack.push(c);
+    } else if (c === '}' || c === ']') {
+      if (stack.length && ((c === '}' && stack[stack.length - 1] === '{') || 
+          (c === ']' && stack[stack.length - 1] === '['))) {
+        stack.pop();
+      }
+    }
+  }
+
+  let repaired = fixed;
+  if (inStr) repaired += '"';
+  
+  for (let i = stack.length - 1; i >= 0; i--) {
+    repaired += stack[i] === '{' ? '}' : ']';
+  }
+
+  try {
+    return JSON.parse(repaired);
+  } catch (e) {
+    console.error('All JSON repair strategies failed:', e);
+    throw new Error('Invalid JSON structure');
+  }
+}
+
 function normalizeLayout(layout) {
   if (!layout) {
     return { pages: [] };
   }
   
-  // If layout has pages array, it's a multi-page layout
   if (Array.isArray(layout.pages)) {
     return {
       pages: layout.pages.map(page => ({
         name: page.name || 'Untitled Page',
         path: page.path || '/',
+        description: page.description || '',
         sections: (page.sections || []).map(section => normalizeSection(section))
       }))
     };
   }
   
-  // If layout has sections array, convert to single-page format
   if (Array.isArray(layout.sections)) {
     return {
       pages: [{
@@ -33,298 +465,275 @@ function normalizeLayout(layout) {
     };
   }
   
-  // If layout is an array, treat as sections for home page
-  if (Array.isArray(layout)) {
-    return {
-      pages: [{
-        name: 'Home',
-        path: '/',
-        sections: layout.map(section => normalizeSection(section))
-      }]
-    };
-  }
-  
-  // Fallback
   return { pages: [] };
 }
 
-// Helper function to normalize individual sections
 function normalizeSection(section) {
   if (!section || typeof section !== 'object') {
     return {
       type: 'textblock',
-      id: Math.random().toString(36).substr(2, 9),
-      heading: 'Text Block',
-      content: 'Content here'
+      id: generateId(),
+      heading: 'Content Block',
+      content: 'Add your content here'
     };
   }
   
   return {
-    id: section.id || Math.random().toString(36).substr(2, 9),
-    ...section,
-    type: section.type || 'textblock'
+    id: section.id || generateId(),
+    type: section.type || 'textblock',
+    ...section
   };
 }
 
-router.post('/:storeId/ai-prompt', authMiddleware, ownerCheckMiddleware((req) => req.params.storeId), async (req, res) => {
+function generateId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+async function attemptRepair(apiKey, endpoint, originalPrompt, previous, attempt) {
   try {
-    const { prompt } = req.body;
-    if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ success: false, message: 'Prompt is required' });
-    }
-
-    const store = req.store;
-    const apiKey = process.env.OPENAI_API_KEY;
+    const enhancedPrompt = buildEnhancedPrompt(originalPrompt, {}, attempt + 1);
     
-    if (!apiKey) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'AI generation unavailable - API key not configured' 
-      });
-    }
+    const repairPrompt = `REPAIR REQUEST - Your previous response was incomplete or too generic.
 
-    const system = [
-      'You are an expert e-commerce web designer creating professional multi-page online stores.',
-      'Analyze the user prompt and create a complete, conversion-optimized storefront design with multiple pages.',
-      'Return valid JSON with EXACTLY this structure:',
-      '{',
-      '  "theme": {',
-      '    "primaryColor": "#hexcolor",',
-      '    "bannerUrl": "https://picsum.photos/seed/unique1/1200/400",',
-      '    "logoUrl": "https://picsum.photos/seed/unique2/120/120",',
-      '    "fonts": "Font Name, sans-serif"',
-      '  },',
-      '  "layout": {',
-      '    "pages": [',
-      '      {',
-      '        "name": "Home",',
-      '        "path": "/",',
-      '        "sections": [array of section objects]',
-      '      },',
-      '      {',
-      '        "name": "Products",',
-      '        "path": "/products",',
-      '        "sections": [array of section objects]',
-      '      },',
-      '      // ... more pages',
-      '    ]',
-      '  }',
-      '}',
-      '',
-      'AVAILABLE SECTION TYPES FOR E-COMMERCE:',
-      '1. navbar: { type: "navbar", logo: "Brand Name", links: [{text, url}], bgColor, textColor }',
-      '2. hero: { type: "hero", title: "Headline", subtitle: "Description", buttonText: "Shop Now", buttonLink: "#products", bgColor, textColor, image: "url" }',
-      '3. features: { type: "features", title: "Why Shop With Us", items: [{icon: "emoji", title, description}], bgColor, textColor }',
-      '4. collection: { type: "collection", title: "Featured Products", items: [{name, price, image, description}], bgColor, textColor }',
-      '5. testimonials: { type: "testimonials", title: "Customer Reviews", items: [{name, rating, text, avatar}], bgColor, textColor }',
-      '6. pricing: { type: "pricing", title: "Plans", items: [{name, price, features: [], buttonText, featured: bool}], bgColor, textColor }',
-      '7. cta: { type: "cta", title: "Call to Action", subtitle: "Description", buttonText, buttonLink, bgColor, textColor }',
-      '8. gallery: { type: "gallery", title: "Gallery", images: [{url, caption}], bgColor, textColor }',
-      '9. textblock: { type: "textblock", heading: "About", content: "Text", bgColor, textColor, alignment: "left" }',
-      '10. newsletter: { type: "newsletter", title: "Stay Updated", subtitle: "Subscribe", buttonText: "Subscribe", bgColor, textColor }',
-      '11. footer: { type: "footer", companyName, tagline, links: [{text, url}], bgColor, textColor }',
-      '',
-      'E-COMMERCE BEST PRACTICES:',
-      '- ALWAYS include a "collection" section with at least 4-6 products',
-      '- Product images: https://picsum.photos/seed/[product-name]/400/400',
-      '- Include realistic prices with currency symbol (e.g., "$29.99", "€45.00")',
-      '- Add testimonials section for social proof',
-      '- Create clear CTAs throughout (Shop Now, Add to Cart, etc.)',
-      '- Use trust signals in features (Free Shipping, Secure Checkout, Money Back Guarantee)',
-      '',
-      'DESIGN GUIDELINES:',
-      '- primaryColor: Match the brand/product type (e.g., #10b981 eco/organic, #f59e0b luxury/premium, #3b82f6 tech)',
-      '- Use contrasting colors for different sections (alternate light/dark backgrounds)',
-      '- Hero should have strong visual impact with product imagery',
-      '- Features should highlight USPs (3-4 key benefits)',
-      '- Products must have: realistic names, prices, brief descriptions, unique image seeds',
-      '',
-      'MULTI-PAGE STRUCTURE REQUIREMENTS:',
-      '- Create 3-5 pages total for a complete e-commerce experience',
-      '- REQUIRED PAGES:',
-      '  1. Home Page ("/"): Hero, features, featured products, testimonials, CTA',
-      '  2. Products/Shop Page ("/products"): Full product collection, categories, filters info',
-      '  3. About Page ("/about"): Company story, mission, team, textblocks',
-      '- OPTIONAL PAGES (choose 1-2):',
-      '  4. Contact Page ("/contact"): Contact form, location, business hours',
-      '  5. Services Page ("/services"): Service offerings, pricing plans',
-      '  6. Gallery Page ("/gallery"): Product gallery, portfolio, showcase',
-      '',
-      'PAGE-SPECIFIC GUIDELINES:',
-      '- HOME PAGE: Must include navbar, hero, features, collection, testimonials, cta, footer (7-8 sections)',
-      '- PRODUCTS PAGE: navbar, hero/banner, collection(s), filters info, footer (4-5 sections)',
-      '- ABOUT PAGE: navbar, hero/banner, textblocks with company info, team, footer (4-5 sections)',
-      '- CONTACT/SERVICES/GALLERY: navbar, hero/banner, relevant content sections, footer (4-5 sections)',
-      '',
-      'NAVIGATION REQUIREMENTS:',
-      '- Every page MUST start with the same navbar section',
-      '- Navbar links should match the pages you create (Home, Products, About, etc.)',
-      '- Every page MUST end with the same footer section',
-      '',
-      'CONTENT REQUIREMENTS:',
-      '- Make content highly specific to the business type',
-      '- Use industry-appropriate language and imagery',
-      '- Ensure each page has a clear purpose and unique content',
-      '- Products should be consistent across pages but presented differently',
-      '- Return ONLY valid JSON, no markdown or explanations'
-    ].join('\n');
+${enhancedPrompt}
 
-    const randomSeed = Math.random().toString(36).substring(7);
-    const timestamp = Date.now();
-    const user = [
-      `Business Type: "${prompt}"`,
-      `Generation ID: ${randomSeed}-${timestamp}`,
-      '',
-      'CREATE A COMPLETE MULTI-PAGE E-COMMERCE WEBSITE with these requirements:',
-      '',
-      '1. MULTI-PAGE STRUCTURE (REQUIRED):',
-      '   - Generate 3-5 complete pages with unique content for each',
-      '   - Home page: showcase, features, social proof, conversion focus',
-      '   - Products page: comprehensive product catalog, organized collections',
-      '   - About page: company story, mission, values, team information',
-      '   - Optional: Contact, Services, or Gallery page based on business type',
-      '',
-      '2. CONSISTENT NAVIGATION (REQUIRED):',
-      '   - Same navbar on every page with links to all pages',
-      '   - Same footer on every page with company info and links',
-      '   - Ensure navbar links match the pages you create',
-      '',
-      '3. PAGE-SPECIFIC CONTENT (REQUIRED):',
-      '   - Each page must have unique, relevant content',
-      '   - Products should appear differently on Home vs Products page',
-      '   - About page should tell the company story with multiple text sections',
-      '   - Use appropriate sections for each page type',
-      '',
-      '4. PRODUCT SHOWCASE (REQUIRED):',
-      '   - Home page: 3-4 featured/bestseller products',
-      '   - Products page: 8-12 products in full collection',
-      '   - Each product needs: unique name, realistic price, description, and image',
-      '   - Products should match the business type exactly',
-      '',
-      '5. CONVERSION & TRUST ELEMENTS:',
-      '   - Compelling heroes with clear value propositions',
-      '   - Strong call-to-action buttons throughout',
-      '   - Trust signals (shipping, returns, guarantees)',
-      '   - Social proof (testimonials, reviews)',
-      '',
-      '6. BRAND CONSISTENCY:',
-      '   - Choose colors that match the product category',
-      '   - Use consistent industry-appropriate language across all pages',
-      '   - Create a cohesive visual story throughout the site',
-      '',
-      '7. TECHNICAL REQUIREMENTS:',
-      '   - Use different product names, prices, and descriptions than before',
-      '   - Use unique image seeds for all images across all pages',
-      '   - Ensure proper page paths (/products, /about, etc.)',
-      '',
-      'Make this feel like a real, comprehensive e-commerce website with multiple pages that work together to tell a complete brand story and drive sales.'
-    ].join('\n');
+SPECIFIC ISSUES TO FIX:
+- Generate COMPLETE JSON with all required fields
+- Ensure each section has unique types (not just hero → features → testimonials)
+- Match the website type's specific needs
+- Use varied section types from the catalog
 
+Previous attempt (DO NOT COPY THIS - make it different):
+${JSON.stringify(previous, null, 2)}
+
+Return COMPLETE, VALID, UNIQUE JSON now.`;
+
+    const repair = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: repairPrompt }] }],
+        generationConfig: {
+          temperature: 1.2, // Higher temp for more variety
+          topP: 0.95,
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!repair.ok) return null;
+
+    const repairData = await repair.json();
+    const repairContent = (repairData.candidates?.[0]?.content?.parts || [])
+      .map(p => (typeof p.text === 'string' ? p.text : ''))
+      .join('');
+    
+    const repairedStr = extractJsonString(repairContent);
+    return tryParseJsonWithRepairs(repairedStr);
+  } catch (e) {
+    console.error('Repair attempt failed:', e);
+    return null;
+  }
+}
+
+// Main AI generation endpoint
+router.post('/:storeId/ai-prompt', 
+  authMiddleware, 
+  ownerCheckMiddleware((req) => req.params.storeId), 
+  async (req, res) => {
     try {
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      const { prompt, mode = 'create' } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Prompt is required' 
+        });
+      }
+
+      const store = req.store;
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'AI generation unavailable - API key not configured' 
+        });
+      }
+
+      const storeContext = {
+        existingTheme: store.theme,
+        existingPages: store.layout?.pages || []
+      };
+
+      const systemPrompt = buildEnhancedPrompt(prompt, storeContext, 0);
+
+      const modelName = 'gemini-2.0-flash-exp';
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
+      console.log('🎨 Generating website for prompt:', prompt);
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'x-goog-api-key': apiKey
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user }
-          ],
-          temperature: 0.9,
-          max_tokens: 4000
+          contents: [{ parts: [{ text: systemPrompt }] }],
+          generationConfig: {
+            temperature: 1.1, // Higher for more variety
+            topP: 0.95,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json'
+          }
         })
       });
 
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error('OpenAI API error:', resp.status, errText);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'AI service temporarily unavailable' 
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`Gemini API error:`, response.status, errText);
+        return res.status(500).json({
+          success: false,
+          message: 'AI service temporarily unavailable'
         });
       }
 
-      const data = await resp.json();
-      const content = data.choices?.[0]?.message?.content || '';
+      const data = await response.json();
+      const content = (data.candidates?.[0]?.content?.parts || [])
+        .map(p => (typeof p.text === 'string' ? p.text : ''))
+        .join('');
       
-      let jsonStr = content.trim();
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/```\n([\s\S]*?)\n```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      
+      const jsonStr = extractJsonString(content);
       let aiResult;
+
       try {
-        aiResult = JSON.parse(jsonStr);
-        console.log('AI Result:', JSON.stringify(aiResult, null, 2)); // Debug log
+        aiResult = tryParseJsonWithRepairs(jsonStr);
+        console.log('✓ AI Result parsed successfully');
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
-        console.error('Content received:', content.substring(0, 500));
+        
         return res.status(500).json({ 
           success: false, 
-          message: 'AI returned invalid format' 
+          message: 'AI returned invalid format. Please try again.' 
         });
       }
 
-      if (!aiResult?.theme || !aiResult?.layout) {
-        console.error('Invalid AI response structure:', aiResult);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'AI response missing required fields' 
-        });
+      // Validate response structure
+      const isValid = aiResult?.theme && 
+                     aiResult?.layout?.pages && 
+                     Array.isArray(aiResult.layout.pages) && 
+                     aiResult.layout.pages.length > 0;
+
+      if (!isValid) {
+        console.warn('Incomplete AI response, attempting repair...');
+        const repaired = await attemptRepair(apiKey, endpoint, prompt, aiResult || {}, 0);
+        
+        if (repaired && repaired.theme && repaired.layout?.pages?.length > 0) {
+          aiResult = repaired;
+          console.log('✓ Response repaired successfully');
+        } else {
+          console.error('Repair failed');
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Failed to generate valid design. Please try again.' 
+          });
+        }
       }
 
-      // Validate layout structure for multi-page
-      if (!aiResult.layout.pages && !aiResult.layout.sections) {
-        console.error('Invalid layout structure - missing pages or sections:', aiResult.layout);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'AI response has invalid layout structure' 
-        });
+      // Log section diversity for debugging
+      const sectionTypes = aiResult.layout.pages.flatMap(p => 
+        p.sections.map(s => s.type)
+      );
+      const uniqueTypes = [...new Set(sectionTypes)];
+      console.log('📊 Section variety:', {
+        total: sectionTypes.length,
+        unique: uniqueTypes.length,
+        types: uniqueTypes
+      });
+
+      if (uniqueTypes.length < 3) {
+        console.warn('⚠️  Low section variety, attempting another generation...');
+        const repaired = await attemptRepair(apiKey, endpoint, prompt, aiResult, 1);
+        if (repaired) {
+          aiResult = repaired;
+          console.log('✓ Increased variety in retry');
+        }
       }
+
+      const normalizedLayout = normalizeLayout(aiResult.layout);
 
       const normalized = {
         theme: {
           primaryColor: aiResult.theme.primaryColor || '#3b82f6',
+          secondaryColor: aiResult.theme.secondaryColor || '#1e40af',
+          accentColor: aiResult.theme.accentColor || '#f59e0b',
+          backgroundColor: aiResult.theme.backgroundColor || '#ffffff',
+          textColor: aiResult.theme.textColor || '#1f2937',
           bannerUrl: aiResult.theme.bannerUrl || '',
           logoUrl: aiResult.theme.logoUrl || '',
-          fonts: aiResult.theme.fonts || 'Inter, ui-sans-serif, system-ui'
+          fonts: aiResult.theme.fonts || 'Inter, system-ui, sans-serif',
+          stylePreset: aiResult.theme.stylePreset || 'modern',
+          borderRadius: aiResult.theme.borderRadius || 'lg',
+          shadow: aiResult.theme.shadow || 'soft',
+          layoutPattern: aiResult.theme.layoutPattern || 'grid-heavy'
         },
-        layout: normalizeLayout(aiResult.layout)
+        layout: normalizedLayout,
+        metadata: aiResult.metadata || {
+          siteName: store.name || 'My Store',
+          description: 'AI-generated website',
+          industry: 'General'
+        }
       };
 
       const updated = await Store.findByIdAndUpdate(
-        store._id, 
+        store._id,
         {
           theme: normalized.theme,
-          layout: normalized.layout
-        }, 
+          layout: normalized.layout,
+          metadata: normalized.metadata
+        },
         { new: true }
       );
 
+      console.log(`✓ Store ${store._id} updated successfully`);
+      console.log(`  - Pages: ${normalizedLayout.pages.length}`);
+      console.log(`  - Sections: ${sectionTypes.length}`);
+      console.log(`  - Unique section types: ${uniqueTypes.length}`);
+      console.log(`  - Style: ${normalized.theme.stylePreset}`);
+      console.log(`  - Layout pattern: ${normalized.theme.layoutPattern}`);
+
       return res.json({ 
         success: true, 
-        data: { store: updated, ai: normalized } 
+        data: { 
+          store: updated,
+          generated: {
+            pageCount: normalizedLayout.pages.length,
+            sectionCount: sectionTypes.length,
+            uniqueSectionTypes: uniqueTypes.length,
+            stylePreset: normalized.theme.stylePreset,
+            layoutPattern: normalized.theme.layoutPattern,
+            pages: normalizedLayout.pages.map(p => ({ 
+              name: p.name, 
+              path: p.path,
+              sectionCount: p.sections.length 
+            }))
+          }
+        } 
       });
 
     } catch (error) {
       console.error('AI generation error:', error);
       return res.status(500).json({ 
         success: false, 
-        message: 'Failed to generate store design' 
+        message: 'Failed to generate store design. Please try again.' 
       });
     }
-
-  } catch (error) {
-    console.error('AI prompt handler error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Server error' 
-    });
   }
-});
+);
 
 module.exports = router;
