@@ -10,12 +10,12 @@ const ComponentLibraryItem = ({ id, type, icon, label }) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`bg-white rounded-lg p-4 shadow-sm border-2 border-gray-200 hover:border-blue-500 cursor-move transition-all ${
+      className={`bg-neutral-900 rounded-lg p-4 shadow-sm border-2 border-neutral-800 hover:border-emerald-500 cursor-move transition-all ${
         isDragging ? 'opacity-50 scale-95' : 'hover:shadow-md'
       }`}
     >
       <div className="text-3xl mb-2 text-center">{icon}</div>
-      <p className="text-sm font-medium text-gray-700 text-center">{label}</p>
+      <p className="text-sm font-medium text-neutral-200 text-center">{label}</p>
     </div>
   );
 };
@@ -47,13 +47,13 @@ const ComponentLibrary = () => {
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
+    <div className="w-64 bg-neutral-900 border-r border-neutral-800 overflow-y-auto flex-shrink-0 text-neutral-100">
       <div className="p-4">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+        <h2 className="text-lg font-bold text-neutral-100 mb-4 flex items-center">
           <span className="mr-2">🧩</span>
           Components
         </h2>
-        <p className="text-xs text-gray-500 mb-4">Drag components to the canvas</p>
+        <p className="text-xs text-neutral-400 mb-4">Drag components to the canvas</p>
         <div className="space-y-3">
           {components.map((component) => (
             <ComponentLibraryItem

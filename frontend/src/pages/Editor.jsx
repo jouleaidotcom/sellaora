@@ -7,6 +7,7 @@ import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
 import PropertiesPanel from '../components/editor/PropertiesPanel';
 import TopBar from '../components/editor/TopBar';
+import StorePreview from '../components/store/StorePreview';
 
 const Editor = () => {
   const { themeId, storeId } = useParams();
@@ -25,6 +26,7 @@ const Editor = () => {
   const [productList, setProductList] = useState([]);
   const location = useLocation();
   const [storeName, setStoreName] = useState('');
+  const [aiPreview, setAiPreview] = useState(null); // { theme, layout }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -38,6 +40,10 @@ const Editor = () => {
     const loadEditor = async () => {
       try {
         const effectiveStoreId = storeId || localStorage.getItem('editorStoreId');
+        // Persist so any subsequent actions (save, navigation) target the same store
+        if (effectiveStoreId) {
+          localStorage.setItem('editorStoreId', effectiveStoreId);
+        }
         if (!effectiveStoreId) {
           // fallback to mock
           setComponents([]);
@@ -380,6 +386,116 @@ const Editor = () => {
     setHistoryIndex((prev) => prev + 1);
     setIsDirty(true);
   }, [historyIndex]);
+
+  // Hydrate the builder state from an AI layout so editing matches the preview exactly
+  const hydrateFromLayout = (incomingLayout, themeFromStore = {}) => {
+    if (!incomingLayout) return;
+
+    const primary = themeFromStore?.primaryColor || '#2563eb';
+    const bg = themeFromStore?.backgroundColor || '#ffffff';
+    const text = themeFromStore?.textColor || '#111827';
+
+    const normalizeSection = (s, idx) => {
+      const t = String(s?.type || '').toLowerCase();
+      const id = `${t || 'section'}-${idx}`;
+      if (t === 'navbar') {
+        return {
+          id,
+          type: 'navbar',
+          props: {
+            logo: s.logo || 'Logo',
+            links: Array.isArray(s.links)
+              ? s.links.map(l => ({
+                  text: l.text || 'Link',
+                  type: l.type || (l.pageName ? 'page' : 'external'),
+                  pageName: l.pageName || '',
+                  url: l.url || (l.pageName ? '' : '#'),
+                }))
+              : [
+                  { text: 'Home', type: 'page', pageName: 'Home' },
+                  { text: 'Products', type: 'external', url: '#' },
+                  { text: 'About', type: 'external', url: '#' },
+                ],
+            bgColor: s.bgColor || bg,
+            textColor: s.textColor || text,
+          }
+        };
+      }
+      if (t === 'hero' || t.includes('hero')) {
+        return { id, type: 'hero', props: { title: s.title || s.heading || 'New Hero Section', subtitle: s.subtitle || s.subheading || 'Add your subtitle here', buttonText: s.buttonText || 'Click Me', buttonLink: s.buttonLink || '#', bgColor: s.bgColor || primary, textColor: s.textColor || '#ffffff', image: s.image || s.imageUrl || s.backgroundUrl || '' } };
+      }
+      if (t === 'features' || t === 'featuredproducts') {
+        const items = Array.isArray(s.items) ? s.items : Array.isArray(s.features) ? s.features : [];
+        return { id, type: 'features', props: { title: s.title || 'Features Section', items: (items.length ? items : [ { icon: '⭐', title: 'Feature 1', description: 'Description here' }, { icon: '🎯', title: 'Feature 2', description: 'Description here' }, { icon: '🚀', title: 'Feature 3', description: 'Description here' }, ]).map(it => ({ icon: it.icon || '⭐', title: it.title || 'Feature', description: it.description || 'Description here' })), bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0f172a' : '#f9fafb'), textColor: s.textColor || text } };
+      }
+      if (t === 'collection' || t.includes('product-grid')) {
+        return { id, type: 'collection', props: { title: s.title || 'Our Collection', items: (Array.isArray(s.items) ? s.items : [ { name: 'Product 1', price: '$19', image: 'https://picsum.photos/seed/p1/300/200', description: 'Great product' }, { name: 'Product 2', price: '$29', image: 'https://picsum.photos/seed/p2/300/200', description: 'Amazing quality' }, { name: 'Product 3', price: '$39', image: 'https://picsum.photos/seed/p3/300/200', description: 'Best seller' }, ]).map(item => ({ name: item.name || item.title || 'Product', price: item.price || '$0', image: item.image || 'https://picsum.photos/seed/default/300/200', description: item.description || 'Product description' })), bgColor: s.bgColor || bg, textColor: s.textColor || text } };
+      }
+      if (t === 'categories-visual' || t.includes('categories')) {
+        const cats = Array.isArray(s.categories) ? s.categories : [];
+        return { id, type: 'collection', props: { title: s.title || 'Categories', items: cats.map(c => ({ title: c.name || c.title, price: '', image: c.imageUrl || c.image || 'https://picsum.photos/seed/cat/300/200' })), bgColor: s.bgColor || bg, textColor: s.textColor || text } };
+      }
+      if (t === 'instagram-feed' || t.includes('instagram')) {
+        const count = s.numberOfPosts || 6;
+        return { id, type: 'gallery', props: { title: s.title || 'Instagram', columns: 3, images: Array.from({ length: Math.min(12, Math.max(1, count)) }).map((_, i) => `https://picsum.photos/seed/insta-${s.username || 'feed'}-${i}/400/300`) } };
+      }
+      if (t === 'testimonials') {
+        return { id, type: 'testimonials', props: { title: s.title || 'What customers say', items: (Array.isArray(s.items) ? s.items : [ { name: 'Alex', rating: 5, text: 'Amazing products!', avatar: 'https://picsum.photos/seed/alex/100/100' }, { name: 'Sam', rating: 5, text: 'Great support and fast delivery.', avatar: 'https://picsum.photos/seed/sam/100/100' }, ]).map(item => ({ name: item.name || item.author || 'Customer', rating: item.rating || 5, text: item.text || item.quote || 'Great experience!', avatar: item.avatar || `https://picsum.photos/seed/${item.name || 'user'}/100/100` })), bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0f172a' : '#f9fafb'), textColor: s.textColor || text } };
+      }
+      if (t === 'pricing') {
+        return { id, type: 'pricing', props: { title: s.title || 'Pricing Plans', items: (Array.isArray(s.items) ? s.items : [ { name: 'Basic', price: '$9/mo', features: ['Feature A', 'Feature B'], buttonText: 'Get Started' }, { name: 'Pro', price: '$29/mo', features: ['Everything in Basic', 'Feature C'], buttonText: 'Choose Pro', featured: true }, ]).map(item => ({ name: item.name || 'Plan', price: item.price || '$0', features: Array.isArray(item.features) ? item.features : ['Feature 1', 'Feature 2'], buttonText: item.buttonText || 'Choose Plan', featured: item.featured || false })), bgColor: s.bgColor || bg, textColor: s.textColor || text } };
+      }
+      if (t === 'cta') {
+        return { id, type: 'cta', props: { heading: s.title || s.heading || 'Ready to get started?', subheading: s.subtitle || s.subheading || 'Join us today', buttonText: s.buttonText || 'Get Started', buttonLink: s.buttonLink || '#', linkType: 'external', pageName: '', bgColor: s.bgColor || primary, textColor: s.textColor || '#ffffff' } };
+      }
+      if (t === 'gallery') {
+        return { id, type: 'gallery', props: { title: s.title || 'Image Gallery', columns: 3, images: Array.isArray(s.images) ? s.images.map(img => typeof img === 'string' ? img : (img.url || img)) : ['https://picsum.photos/seed/1/400/300', 'https://picsum.photos/seed/2/400/300', 'https://picsum.photos/seed/3/400/300'], bgColor: s.bgColor || bg, textColor: s.textColor || text } };
+      }
+      if (t === 'newsletter') {
+        return { id, type: 'newsletter', props: { title: s.title || 'Join our newsletter', description: s.subtitle || s.description || 'Get updates in your inbox.', placeholder: 'you@example.com', ctaText: s.buttonText || 'Subscribe', bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0b1220' : '#f3f4f6'), textColor: s.textColor || '#1f2937' } };
+      }
+      if (t === 'footer') {
+        return { id, type: 'footer', props: { companyName: s.companyName || 'Company Name', tagline: s.tagline || 'Your company tagline', links: (Array.isArray(s.links) ? s.links : [ { text: 'Home', url: '#' }, { text: 'About', url: '#' }, { text: 'Contact', url: '#' }, ]).map(l => ({ text: l.text || 'Link', url: l.url || '#' })), bgColor: s.bgColor || (themeFromStore?.stylePreset === 'bold' ? '#0b1220' : '#1f2937'), textColor: s.textColor || '#f3f4f6' } };
+      }
+      return { id, type: t || 'custom', props: Object.keys(s || {}).reduce((acc, key) => { if (key !== 'id' && key !== 'type') acc[key] = s[key]; return acc; }, {}) };
+    };
+
+    let comps = [];
+    const pageList = [];
+    const byPage = {};
+
+    if (incomingLayout && Array.isArray(incomingLayout.pages)) {
+      incomingLayout.pages.forEach((pg, pidx) => {
+        const name = pg.name || `Page ${pidx + 1}`;
+        pageList.push({ id: `page-${pidx}`, name });
+        byPage[name] = Array.isArray(pg.sections) ? pg.sections.map((s, idx) => normalizeSection(s, idx)) : [];
+      });
+    } else if (incomingLayout && Array.isArray(incomingLayout.sections)) {
+      comps = incomingLayout.sections.map((s, idx) => normalizeSection(s, idx));
+      pageList.push({ id: 'page-0', name: 'Home' });
+      byPage['Home'] = comps;
+    }
+
+    if (pageList.length) {
+      setPages(pageList);
+      setComponentsByPage(byPage);
+      const initialName = pageList[0].name;
+      const initialComps = byPage[initialName] || [];
+      setComponents(initialComps);
+      setSelectedComponent(null);
+      setHistory([JSON.parse(JSON.stringify(initialComps))]);
+      setHistoryIndex(0);
+      setCurrentPage(0);
+    } else {
+      setPages([{ id: 'page-0', name: 'Home' }]);
+      setComponentsByPage({ Home: comps });
+      setComponents(comps);
+      setSelectedComponent(null);
+      setHistory([JSON.parse(JSON.stringify(comps))]);
+      setHistoryIndex(0);
+      setCurrentPage(0);
+    }
+  };
 
   // Page management
   const selectPage = (index) => {
@@ -797,7 +913,7 @@ const Editor = () => {
   }, [isDirty]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
       <TopBar
         storeName={location.state?.storeName || storeName}
         onUndo={handleUndo}
@@ -840,14 +956,14 @@ const Editor = () => {
                     title="Theme Preview"
                     sandbox=""
                     srcDoc={htmlContent}
-                    style={{ width: '100%', height: '80vh', border: 'none' }}
+                    style={{ width: '100%, height: 80vh, border: none' }}
                   />
                 </div>
               </div>
             </div>
           ) : (
             <SortableContext items={components.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <Canvas
+              <Canvas
                 components={components}
                 selectedComponent={selectedComponent}
                 onSelectComponent={setSelectedComponent}
@@ -874,14 +990,14 @@ const Editor = () => {
           )}
 
           <PropertiesPanel
-                selectedComponent={selectedComponent}
-                onUpdateComponent={updateComponent}
-                onDeleteComponent={deleteComponent}
-                onDuplicateComponent={duplicateComponent}
-                onClose={() => setSelectedComponent(null)}
-                pages={pages}
-                products={productList}
-              />
+            selectedComponent={selectedComponent}
+            onUpdateComponent={updateComponent}
+            onDeleteComponent={deleteComponent}
+            onDuplicateComponent={duplicateComponent}
+            onClose={() => setSelectedComponent(null)}
+            pages={pages}
+            products={productList}
+          />
         </DndContext>
       </div>
     </div>

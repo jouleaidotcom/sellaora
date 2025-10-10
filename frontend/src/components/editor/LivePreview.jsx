@@ -9,7 +9,7 @@ const LivePreview = ({ store, products }) => {
   const theme = store?.theme || {};
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
+    <div className="bg-white text-neutral-900 shadow rounded-lg overflow-hidden">
       {sections.length === 0 ? (
         <div className="p-8 text-center text-gray-500">No sections yet. Use the editor to add sections.</div>
       ) : (

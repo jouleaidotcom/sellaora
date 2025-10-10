@@ -47,7 +47,7 @@ const Canvas = ({
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: pageBg }}>
       <div className="max-w-7xl mx-auto py-8">
-        <div ref={setCanvasRef} className={`bg-white shadow-2xl rounded-lg overflow-hidden ${isOver ? 'ring-2 ring-blue-400' : ''}`}>
+        <div ref={setCanvasRef} className={`bg-white text-neutral-900 shadow-2xl rounded-lg overflow-hidden ${isOver ? 'ring-2 ring-blue-400' : ''}`}>
           {components.length === 0 ? (
             <div className="flex items-center justify-center h-96 text-gray-400">
               <div className="text-center">

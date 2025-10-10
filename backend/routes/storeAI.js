@@ -262,6 +262,11 @@ CRITICAL SECTION RULES:
   * gallery: "grid", "masonry", "carousel"
   * testimonials: "cards", "slider"
 
+PAGE RULES (MANDATORY):
+- Include at least these pages: "Home", "About", "Contact", and "Products" (or "Collection").
+- Use paths: "/" for Home, "/about" for About, "/contact" for Contact, and "/products" (or "/collection").
+- Each page must contain meaningful sections (Home 5–7 sections; others 3–5). Do not leave any page empty.
+
 SECTION VARIETY RULES:
 - Home page: Use 5-7 different section types
 - Other pages: Use 3-5 different section types
@@ -468,6 +473,94 @@ function normalizeLayout(layout) {
   return { pages: [] };
 }
 
+// Ensure the core pages exist: Home, About, Contact, Products
+function ensureCorePages(layout, store) {
+  const pages = Array.isArray(layout?.pages) ? layout.pages.slice() : [];
+  const getName = (s) => (s || '').toString().trim();
+  const existsByName = (name) => pages.some(p => getName(p.name).toLowerCase() === name.toLowerCase());
+  const storeName = getName(store?.storeName || store?.name || store?.metadata?.siteName || 'Store');
+
+  const ensurePage = (name, path, sectionsBuilder) => {
+    if (!existsByName(name)) {
+      pages.push({
+        name,
+        path,
+        description: `${name} page`,
+        sections: sectionsBuilder().map(s => normalizeSection(s))
+      });
+    }
+  };
+
+  ensurePage('Home', '/', () => ([
+    { type: 'hero', title: `Welcome to ${storeName}`, subtitle: 'Discover our latest products', image: `https://picsum.photos/seed/${Date.now()}-home/1200/600` }
+  ]));
+
+  ensurePage('About', '/about', () => ([
+    { type: 'about', title: 'About Us', content: `${storeName} — our story and mission.`, image: `https://picsum.photos/seed/${Date.now()}-about/1000/600` }
+  ]));
+
+  ensurePage('Contact', '/contact', () => ([
+    { type: 'contact', title: 'Contact Us', subtitle: 'We usually reply within 24 hours.' },
+    { type: 'location', address: '123 Main St', phone: '+1 (000) 000-0000', email: 'hello@example.com' }
+  ]));
+
+  // Prefer Products; if a page named Collection exists, keep both
+  if (!existsByName('Products') && !existsByName('Collection')) {
+    pages.push({
+      name: 'Products',
+      path: '/products',
+      description: 'Browse our catalog',
+      sections: [
+        normalizeSection({ type: 'products', title: 'Browse Our Products', items: [
+          { name: 'Sample Product', price: '$19.99', image: `https://picsum.photos/seed/${Date.now()}-prod/400/300`, description: 'Great quality' }
+        ] })
+      ]
+    });
+  }
+
+  return { pages };
+}
+
+// Ensure every page includes a navbar at the top and a footer at the bottom
+function ensureNavAndFooter(layout, store) {
+  const safeLayout = layout && Array.isArray(layout.pages) ? layout : { pages: [] };
+  const pages = safeLayout.pages.map(p => ({ ...p, sections: Array.isArray(p.sections) ? p.sections : [] }));
+
+  const companyName = (store?.storeName || store?.name || store?.metadata?.siteName || 'Company').toString();
+  const links = pages.map(pg => ({ text: pg.name || 'Page', pageName: pg.name || 'Home', type: 'page' }));
+
+  const withNavFooter = pages.map(pg => {
+    const types = (pg.sections || []).map(s => String(s.type || '').toLowerCase());
+    const hasNavbar = types.includes('navbar');
+    const hasFooter = types.includes('footer');
+
+    const newSections = [...pg.sections];
+
+    if (!hasNavbar) {
+      newSections.unshift({
+        id: generateId(),
+        type: 'navbar',
+        logo: companyName.charAt(0).toUpperCase() + companyName.slice(1),
+        links
+      });
+    }
+
+    if (!hasFooter) {
+      newSections.push({
+        id: generateId(),
+        type: 'footer',
+        companyName,
+        tagline: 'Powered by JouleAI',
+        links: links.map(l => ({ text: l.text, url: `/${(l.pageName || l.text || '').toString().toLowerCase()}` }))
+      });
+    }
+
+    return { ...pg, sections: newSections };
+  });
+
+  return { pages: withNavFooter };
+}
+
 function normalizeSection(section) {
   if (!section || typeof section !== 'object') {
     return {
@@ -665,7 +758,10 @@ router.post('/:storeId/ai-prompt',
         }
       }
 
-      const normalizedLayout = normalizeLayout(aiResult.layout);
+      let normalizedLayout = normalizeLayout(aiResult.layout);
+      // Enforce core pages first, then navbar/footer so nav links include all pages
+      normalizedLayout = ensureCorePages(normalizedLayout, store);
+      normalizedLayout = ensureNavAndFooter(normalizedLayout, store);
 
       const normalized = {
         theme: {

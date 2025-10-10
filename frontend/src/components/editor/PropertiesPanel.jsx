@@ -38,19 +38,19 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
 
   const renderColorPicker = (label, value, key) => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">{label}</label>
       <div className="flex gap-2">
         <input
           type="color"
           value={value}
           onChange={(e) => handleChange(key, e.target.value)}
-          className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
+          className="w-12 h-10 rounded border border-neutral-700 cursor-pointer bg-neutral-900"
         />
         <input
           type="text"
           value={value}
           onChange={(e) => handleChange(key, e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 px-3 py-2 border border-neutral-700 bg-neutral-900 text-neutral-100 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-neutral-500"
           placeholder="#000000"
         />
       </div>
@@ -59,12 +59,12 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
 
   const renderTextInput = (label, value, key, placeholder = '') => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">{label}</label>
       <input
         type="text"
         value={value}
         onChange={(e) => handleChange(key, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-neutral-700 bg-neutral-900 text-neutral-100 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-neutral-500"
         placeholder={placeholder}
       />
     </div>
@@ -72,11 +72,11 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
 
   const renderTextArea = (label, value, key, placeholder = '') => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">{label}</label>
       <textarea
         value={value}
         onChange={(e) => handleChange(key, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-neutral-700 bg-neutral-900 text-neutral-100 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-neutral-500"
         rows="4"
         placeholder={placeholder}
       />
@@ -85,11 +85,11 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
 
   const renderSelect = (label, value, key, options) => (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-neutral-300 mb-2">{label}</label>
       <select
         value={value}
         onChange={(e) => handleChange(key, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-neutral-700 bg-neutral-900 text-neutral-100 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -235,7 +235,7 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
         )}
 
         <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Advanced (JSON)</label>
+          <label className="block text-sm font-medium text-neutral-300 mb-2">Advanced (JSON)</label>
           <textarea
             value={JSON.stringify(props, null, 2)}
             onChange={(e) => {
@@ -245,7 +245,7 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
                 Object.keys(obj).forEach((k) => handleChange(k, obj[k]));
               } catch {}
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded"
+            className="w-full px-3 py-2 border border-neutral-700 bg-neutral-900 text-neutral-100 rounded"
             rows="10"
           />
         </div>
@@ -659,10 +659,10 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
   const renderProperties = propertiesMap[type] || renderGenericProperties;
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex-shrink-0 overflow-y-auto">
+    <div className="w-80 bg-neutral-900 border-l border-neutral-800 flex-shrink-0 overflow-y-auto text-neutral-100">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-gray-900">Properties</h2>
+          <h2 className="text-lg font-bold text-neutral-100">Properties</h2>
           <div className="flex items-center gap-2">
             {selectedComponent && (
               <>
@@ -691,8 +691,8 @@ const PropertiesPanel = ({ selectedComponent, onUpdateComponent, onDeleteCompone
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs text-blue-800 font-medium">
+        <div className="mb-4 p-3 bg-emerald-900/30 rounded-lg border border-emerald-800">
+          <p className="text-xs text-emerald-300 font-medium">
             Component Type: <span className="uppercase">{type}</span>
           </p>
         </div>
