@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import AutoSection from '../shared/AutoSection';
+import { SectionRenderer } from '../shared/SectionRenderer';
 
 const EditableText = ({ value, onChange, className, style, multiline = false }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -526,12 +526,10 @@ const ButtonComponent = ({ component, onUpdate, onNavigatePage }) => {
   );
 };
 
-const EditableComponent = ({ component }) => {
-  // AI-first: always render via AutoSection using the component's props.
+const EditableComponent = ({ component, theme }) => {
+  // AI-first: render through the shared SectionRenderer used by StorePreview for pixel-perfect parity.
   return (
-    <div className="bg-white text-neutral-900">
-      <AutoSection section={{ type: component.type, ...(component.props || {}) }} />
-    </div>
+    <SectionRenderer section={{ type: component.type, ...(component.props || {}) }} theme={theme} />
   );
 };
 
