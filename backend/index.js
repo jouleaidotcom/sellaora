@@ -36,20 +36,23 @@ const connectDB = async () => {
 
 connectDB();
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/store', storeRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/store', storeAIRoutes);
-app.use('/api/store', storeApprovalRoutes);
-app.use('/api/store', storeEditorRoutes);
-app.use('/api/store', storePublishRoutes);
-app.use('/api/teams', teamRoutes);
-
-// Legacy routes for backward compatibility
-app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Hello from backend' });
+app.get('/', (req, res) => {
+  res.json({ 
+    success: true,
+    message: 'Joule API is running',
+    version: '1.0.0',
+    status: 'healthy',
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      store: '/api/store',
+      products: '/api/products',
+      teams: '/api/teams',
+      upload: '/api/upload'
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Health check route
@@ -62,11 +65,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler - must be after all other routes
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'Hello from backend' });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/store', storeRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/store', storeAIRoutes);
+app.use('/api/store', storeApprovalRoutes);
+app.use('/api/store', storeEditorRoutes);
+app.use('/api/store', storePublishRoutes);
+app.use('/api/teams', teamRoutes);
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
+    path: req.path,
+    method: req.method
   });
 });
 
@@ -75,10 +94,13 @@ app.use((error, req, res, next) => {
   console.error('Server Error:', error);
   res.status(500).json({
     success: false,
-    message: 'Internal server error'
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? error.message : undefined
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Server URL: http://0.0.0.0:${PORT}`);
 });
