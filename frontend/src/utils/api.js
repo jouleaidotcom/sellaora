@@ -58,12 +58,24 @@ export const authAPI = {
       body: JSON.stringify(userData),
     });
 
+    const responseText = await response.text();
+    console.log('Registration response:', responseText);
+
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        throw new Error('Registration failed: ' + (responseText || 'No response from server'));
+      }
       throw new Error(errorData.message || 'Registration failed');
     }
 
-    return response.json();
+    try {
+      return responseText ? JSON.parse(responseText) : {};
+    } catch (e) {
+      throw new Error('Invalid response from server');
+    }
   },
 
   login: async (credentials) => {
