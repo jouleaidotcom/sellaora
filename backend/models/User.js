@@ -17,8 +17,7 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
+    required: [true, 'Password is required']
   }
 }, {
   timestamps: true,
@@ -33,9 +32,15 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('passwordHash')) return next();
+  if (!this.isModified('passwordHash')) {
+    return next();
+  }
   
   try {
+    if (this.passwordHash.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
+    
     const salt = await bcrypt.genSalt(12);
     this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
     next();
@@ -49,7 +54,12 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   if (!candidatePassword || !this.passwordHash) {
     return false;
   }
-  return await bcrypt.compare(candidatePassword, this.passwordHash);
+  try {
+    return await bcrypt.compare(candidatePassword, this.passwordHash);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 module.exports = mongoose.model('User', userSchema);
