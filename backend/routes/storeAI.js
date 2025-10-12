@@ -582,10 +582,10 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-async function attemptRepair(apiKey, endpoint, originalPrompt, previous, attempt) {
+async function attemptRepair(apiKey, modelName, originalPrompt, previous, attempt) {
   try {
     const enhancedPrompt = buildEnhancedPrompt(originalPrompt, {}, attempt + 1);
-    
+
     const repairPrompt = `REPAIR REQUEST - Your previous response was incomplete or too generic.
 
 ${enhancedPrompt}
@@ -601,30 +601,28 @@ ${JSON.stringify(previous, null, 2)}
 
 Return COMPLETE, VALID, UNIQUE JSON now.`;
 
-    const repair = await fetch(endpoint, {
+    const repair = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: repairPrompt }] }],
-        generationConfig: {
-          temperature: 1.2, // Higher temp for more variety
-          topP: 0.95,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json'
-        }
+        model: modelName,
+        messages: [
+          { role: 'user', content: repairPrompt }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 1.2,
+        top_p: 0.95,
+        max_tokens: 4096
       })
     });
 
     if (!repair.ok) return null;
 
     const repairData = await repair.json();
-    const repairContent = (repairData.candidates?.[0]?.content?.parts || [])
-      .map(p => (typeof p.text === 'string' ? p.text : ''))
-      .join('');
-    
+    const repairContent = repairData?.choices?.[0]?.message?.content || '';
     const repairedStr = extractJsonString(repairContent);
     return tryParseJsonWithRepairs(repairedStr);
   } catch (e) {
@@ -649,7 +647,7 @@ router.post('/:storeId/ai-prompt',
       }
 
       const store = req.store;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.OPENAI_API_KEY;
       
       if (!apiKey) {
         return res.status(500).json({ 
@@ -665,31 +663,31 @@ router.post('/:storeId/ai-prompt',
 
       const systemPrompt = buildEnhancedPrompt(prompt, storeContext, 0);
 
-      const modelName = 'gemini-2.0-flash-exp';
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
       console.log('🎨 Generating website for prompt:', prompt);
 
-      const response = await fetch(endpoint, {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
+          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: {
-            temperature: 1.1, // Higher for more variety
-            topP: 0.95,
-            maxOutputTokens: 8192,
-            responseMimeType: 'application/json'
-          }
+          model: modelName,
+          messages: [
+            { role: 'user', content: systemPrompt }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 1.1,
+          top_p: 0.95,
+          max_tokens: 4096
         })
       });
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error(`Gemini API error:`, response.status, errText);
+        console.error(`OpenAI API error:`, response.status, errText);
         return res.status(500).json({
           success: false,
           message: 'AI service temporarily unavailable'
@@ -697,9 +695,7 @@ router.post('/:storeId/ai-prompt',
       }
 
       const data = await response.json();
-      const content = (data.candidates?.[0]?.content?.parts || [])
-        .map(p => (typeof p.text === 'string' ? p.text : ''))
-        .join('');
+      const content = data?.choices?.[0]?.message?.content || '';
       
       const jsonStr = extractJsonString(content);
       let aiResult;
@@ -724,7 +720,7 @@ router.post('/:storeId/ai-prompt',
 
       if (!isValid) {
         console.warn('Incomplete AI response, attempting repair...');
-        const repaired = await attemptRepair(apiKey, endpoint, prompt, aiResult || {}, 0);
+        const repaired = await attemptRepair(apiKey, modelName, prompt, aiResult || {}, 0);
         
         if (repaired && repaired.theme && repaired.layout?.pages?.length > 0) {
           aiResult = repaired;
@@ -751,7 +747,7 @@ router.post('/:storeId/ai-prompt',
 
       if (uniqueTypes.length < 3) {
         console.warn('⚠️  Low section variety, attempting another generation...');
-        const repaired = await attemptRepair(apiKey, endpoint, prompt, aiResult, 1);
+        const repaired = await attemptRepair(apiKey, modelName, prompt, aiResult, 1);
         if (repaired) {
           aiResult = repaired;
           console.log('✓ Increased variety in retry');
