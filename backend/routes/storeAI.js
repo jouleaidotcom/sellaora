@@ -6,6 +6,16 @@ const authMiddleware = require('../middleware/authMiddleware');
 const ownerCheckMiddleware = require('../middleware/ownerCheckMiddleware');
 
 const router = express.Router();
+router.get('/test-ai', (req, res) => {
+  console.log('🧪 Test AI route hit');
+  res.json({
+    success: true,
+    message: 'StoreAI routes are working',
+    timestamp: new Date().toISOString(),
+    hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+    keyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0
+  });
+});
 
 // Industry-specific design templates with different structures
 const DESIGN_ARCHETYPES = {
@@ -601,12 +611,21 @@ ${JSON.stringify(previous, null, 2)}
 
 Return COMPLETE, VALID, UNIQUE JSON now.`;
 
+    const repairHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    if (process.env.OPENAI_PROJECT_ID) {
+      repairHeaders['OpenAI-Project'] = process.env.OPENAI_PROJECT_ID;
+    }
+    if (process.env.OPENAI_ORG_ID) {
+      repairHeaders['OpenAI-Organization'] = process.env.OPENAI_ORG_ID;
+    }
+    
     const repair = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: repairHeaders,
       body: JSON.stringify({
         model: modelName,
         messages: [
@@ -636,6 +655,14 @@ router.post('/:storeId/ai-prompt',
   authMiddleware, 
   ownerCheckMiddleware((req) => req.params.storeId), 
   async (req, res) => {
+    console.log('🚀 AI route hit:', {
+      storeId: req.params.storeId,
+      method: req.method,
+      url: req.url,
+      hasAuth: !!req.user,
+      bodyKeys: Object.keys(req.body || {})
+    });
+    
     try {
       const { prompt, mode = 'create' } = req.body;
       
@@ -649,7 +676,16 @@ router.post('/:storeId/ai-prompt',
       const store = req.store;
       const apiKey = process.env.OPENAI_API_KEY;
       
+      console.log('🔍 API Key check:', {
+        hasApiKey: !!apiKey,
+        keyLength: apiKey ? apiKey.length : 0,
+        keyPrefix: apiKey ? apiKey.substring(0, 20) : 'none',
+        hasProjectId: !!process.env.OPENAI_PROJECT_ID,
+        hasOrgId: !!process.env.OPENAI_ORG_ID
+      });
+      
       if (!apiKey) {
+        console.error('❌ No OpenAI API key found in environment variables');
         return res.status(500).json({ 
           success: false, 
           message: 'AI generation unavailable - API key not configured' 
@@ -667,12 +703,23 @@ router.post('/:storeId/ai-prompt',
 
       console.log('🎨 Generating website for prompt:', prompt);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    if (process.env.OPENAI_PROJECT_ID) {
+      headers['OpenAI-Project'] = process.env.OPENAI_PROJECT_ID;
+    }
+    if (process.env.OPENAI_ORG_ID) {
+      headers['OpenAI-Organization'] = process.env.OPENAI_ORG_ID;
+    }
+    
+    console.log('🔑 Making OpenAI API request with headers:', Object.keys(headers));
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers,
         body: JSON.stringify({
           model: modelName,
           messages: [
@@ -687,10 +734,27 @@ router.post('/:storeId/ai-prompt',
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error(`OpenAI API error:`, response.status, errText);
+        console.error(`❌ OpenAI API error:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errText,
+          apiKey: apiKey ? `${apiKey.substring(0, 20)}...` : 'missing',
+          projectId: process.env.OPENAI_PROJECT_ID || 'not set',
+          orgId: process.env.OPENAI_ORG_ID || 'not set'
+        });
+        
+        let message = 'AI service temporarily unavailable';
+        if (response.status === 401) {
+          message = 'Invalid API key or insufficient permissions';
+        } else if (response.status === 429) {
+          message = 'Rate limit exceeded, please try again later';
+        } else if (response.status === 404) {
+          message = 'Model not found or not accessible';
+        }
+        
         return res.status(500).json({
           success: false,
-          message: 'AI service temporarily unavailable'
+          message
         });
       }
 
