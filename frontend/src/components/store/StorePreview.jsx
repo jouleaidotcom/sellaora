@@ -839,7 +839,16 @@ const renderSection = (section, idx, theme) => {
 
 const SimpleFallback = ({ storeId, theme, layout }) => {
   const sections = layout?.sections || layout?.pages?.[0]?.sections || [];
-  const storeName = theme?.siteName || theme?.name || 'Your Store';
+  const storeName = theme?.siteName || theme?.name || layout?.siteName || 'Your Store';
+  
+  // Debug: Log the actual data being received
+  console.log('SimpleFallback received:', { 
+    storeName, 
+    sectionsCount: sections.length, 
+    sections: sections.map(s => ({ type: s.type, title: s.title, hasContent: !!s.content })),
+    theme,
+    layout 
+  });
   
   const renderSection = (section, index) => {
     const sectionType = section.type?.toLowerCase();
@@ -901,25 +910,48 @@ const SimpleFallback = ({ storeId, theme, layout }) => {
         
       case 'products':
       case 'collection':
+        // Use actual products from section data or generate based on prompt context
+        const products = section.items || section.products || [
+          { name: 'Premium Product 1', price: '$99', description: 'High-quality product with amazing features' },
+          { name: 'Popular Item 2', price: '$79', description: 'Customer favorite with excellent reviews' },
+          { name: 'New Arrival 3', price: '$119', description: 'Latest addition to our collection' }
+        ];
+        
         return (
           <section key={index} className="py-16 bg-white">
             <div className="max-w-7xl mx-auto px-4">
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                  {section.title || 'Featured Products'}
+                  {section.title || section.heading || 'Featured Products'}
                 </h2>
-                <p className="text-lg text-gray-600">Discover our carefully curated collection</p>
+                <p className="text-lg text-gray-600">
+                  {section.subtitle || section.description || 'Discover our carefully curated collection'}
+                </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {[1, 2, 3].map((i) => (
+                {products.map((product, i) => (
                   <div key={i} className="group cursor-pointer">
-                    <div className="bg-gray-100 rounded-xl aspect-square mb-4 flex items-center justify-center group-hover:shadow-xl transition-shadow">
-                      <span className="text-4xl">📦</span>
+                    <div className="bg-gray-100 rounded-xl aspect-square mb-4 flex items-center justify-center group-hover:shadow-xl transition-shadow overflow-hidden">
+                      {product.image || product.imageUrl ? (
+                        <img 
+                          src={product.image || product.imageUrl} 
+                          alt={product.name || product.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-4xl">📦</span>
+                      )}
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Premium Product {i}</h3>
-                    <p className="text-gray-600 mb-3">High-quality product with amazing features</p>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {product.name || product.title || `Product ${i + 1}`}
+                    </h3>
+                    <p className="text-gray-600 mb-3">
+                      {product.description || 'High-quality product with amazing features'}
+                    </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-blue-600">$99</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {product.price || '$99'}
+                      </span>
                       <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                         Add to Cart
                       </button>
@@ -932,36 +964,52 @@ const SimpleFallback = ({ storeId, theme, layout }) => {
         );
         
       case 'testimonials':
+        // Use actual testimonials from section data
+        const testimonials = section.items || section.testimonials || [
+          { name: 'Sarah J.', text: 'Amazing products and exceptional service! Highly recommend to everyone.', rating: 5 },
+          { name: 'Mike C.', text: 'Great quality and fast delivery. Will definitely shop again!', rating: 5 },
+          { name: 'Emma D.', text: 'Outstanding customer support and beautiful products.', rating: 5 }
+        ];
+        
         return (
           <section key={index} className="py-16 bg-gray-50">
             <div className="max-w-7xl mx-auto px-4">
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                  {section.title || 'What Our Customers Say'}
+                  {section.title || section.heading || 'What Our Customers Say'}
                 </h2>
+                {section.subtitle && (
+                  <p className="text-lg text-gray-600">{section.subtitle}</p>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {['Sarah J.', 'Mike C.', 'Emma D.'].map((name, i) => (
-                  <div key={i} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex mb-4">
-                      {[...Array(5)].map((_, star) => (
-                        <span key={star} className="text-yellow-400 text-lg">★</span>
-                      ))}
-                    </div>
-                    <p className="text-gray-600 mb-4 italic">
-                      "Amazing products and exceptional service! Highly recommend to everyone."
-                    </p>
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                        {name[0]}
+                {testimonials.map((testimonial, i) => {
+                  const name = testimonial.name || testimonial.author || `Customer ${i + 1}`;
+                  const rating = testimonial.rating || 5;
+                  const text = testimonial.text || testimonial.quote || testimonial.content || 'Great experience!';
+                  
+                  return (
+                    <div key={i} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex mb-4">
+                        {[...Array(5)].map((_, star) => (
+                          <span key={star} className={`text-lg ${star < rating ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
+                        ))}
                       </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{name}</div>
-                        <div className="text-sm text-gray-500">Verified Customer</div>
+                      <p className="text-gray-600 mb-4 italic">
+                        "{text}"
+                      </p>
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                          {name[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{name}</div>
+                          <div className="text-sm text-gray-500">{testimonial.role || 'Verified Customer'}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -1006,13 +1054,137 @@ const SimpleFallback = ({ storeId, theme, layout }) => {
           </footer>
         );
         
+      case 'features':
+        const features = section.items || section.features || [
+          { title: 'Fast Delivery', description: 'Quick shipping worldwide', icon: '🚚' },
+          { title: 'Secure Payment', description: 'Safe and encrypted transactions', icon: '🔒' },
+          { title: '24/7 Support', description: 'Always here to help you', icon: '💬' }
+        ];
+        
+        return (
+          <section key={index} className="py-16 bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {section.title || section.heading || 'Why Choose Us'}
+                </h2>
+                {section.subtitle && (
+                  <p className="text-lg text-gray-600">{section.subtitle}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {features.map((feature, i) => (
+                  <div key={i} className="text-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="text-4xl mb-4">{feature.icon || '⭐'}</div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {feature.title || feature.name || `Feature ${i + 1}`}
+                    </h3>
+                    <p className="text-gray-600">{feature.description || 'Feature description'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'about':
+      case 'story':
+        return (
+          <section key={index} className="py-16 bg-white">
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {section.title || section.heading || 'About Us'}
+                </h2>
+              </div>
+              <div className="prose prose-lg max-w-none text-gray-600 leading-relaxed">
+                <p>{section.content || section.text || section.description || 'Tell your story here. Share what makes your business unique and why customers should choose you.'}</p>
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'contact':
+        return (
+          <section key={index} className="py-16 bg-gray-50">
+            <div className="max-w-4xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {section.title || section.heading || 'Get In Touch'}
+                </h2>
+                {section.subtitle && (
+                  <p className="text-lg text-gray-600">{section.subtitle}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Contact Information</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-4">📧</span>
+                      <span>{section.email || 'hello@yourstore.com'}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-4">📞</span>
+                      <span>{section.phone || '(555) 123-4567'}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-4">📍</span>
+                      <span>{section.address || '123 Business Street, City, State'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Send Message</h3>
+                  <form className="space-y-4">
+                    <input type="text" placeholder="Your Name" className="w-full p-3 border border-gray-300 rounded-lg" />
+                    <input type="email" placeholder="Your Email" className="w-full p-3 border border-gray-300 rounded-lg" />
+                    <textarea placeholder="Your Message" rows="4" className="w-full p-3 border border-gray-300 rounded-lg"></textarea>
+                    <button type="submit" className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                      Send Message
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'newsletter':
+      case 'signup':
+        return (
+          <section key={index} className="py-16 bg-blue-600">
+            <div className="max-w-4xl mx-auto px-4 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                {section.title || section.heading || 'Stay Updated'}
+              </h2>
+              <p className="text-xl text-blue-100 mb-8">
+                {section.subtitle || section.description || 'Get the latest news and exclusive offers'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  className="flex-1 px-4 py-3 rounded-lg border-0 focus:ring-2 focus:ring-blue-300"
+                />
+                <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                  Subscribe
+                </button>
+              </div>
+            </div>
+          </section>
+        );
+      
       default:
         return (
-          <div key={index} className="py-8 bg-white">
+          <div key={index} className="py-16 bg-white">
             <div className="max-w-7xl mx-auto px-4 text-center">
               <div className="bg-gray-100 rounded-lg p-8">
-                <h3 className="text-lg font-semibold mb-2">{section.type || 'Custom Section'}</h3>
-                <p className="text-gray-600">{section.title || section.heading || 'Content section'}</p>
+                <h3 className="text-xl font-semibold mb-4">{section.type || 'Custom Section'}</h3>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{section.title || section.heading || 'Section Title'}</h2>
+                {section.subtitle && <p className="text-lg text-gray-600 mb-4">{section.subtitle}</p>}
+                {section.content && <p className="text-gray-600">{section.content}</p>}
+                {section.description && <p className="text-gray-600">{section.description}</p>}
               </div>
             </div>
           </div>
