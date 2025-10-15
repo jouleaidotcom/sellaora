@@ -737,8 +737,120 @@ router.post('/:storeId/ai-prompt',
           console.warn(`⚠️ AI generation failed: ${error.message}`);
           console.log('🔄 Using enhanced fallback with templates...');
           
-          // Enhanced fallback using our templates
+          // Generate dynamic content based on the actual user prompt
           const { COMPONENT_TEMPLATES } = require('../utils/reactComponentTemplates');
+          
+          // Analyze prompt to generate appropriate content
+          const promptLower = prompt.toLowerCase();
+          
+          // Detect business type and generate content accordingly
+          let businessType = 'store';
+          let heroTitle = `Welcome to ${websiteConfig.siteName}`;
+          let heroSubtitle = 'Discover amazing products and deals';
+          let productsTitle = 'Featured Products';
+          let products = [];
+          let testimonials = [];
+          
+          // Coffee/Cafe detection
+          if (promptLower.includes('coffee') || promptLower.includes('cafe') || promptLower.includes('espresso') || promptLower.includes('bean')) {
+            businessType = 'coffee shop';
+            heroTitle = `Premium Coffee Experience`;
+            heroSubtitle = 'Artisan roasted beans and handcrafted beverages';
+            productsTitle = 'Our Coffee Selection';
+            products = [
+              { id: 1, name: 'Ethiopian Single Origin', price: '$24', image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=300', rating: 5, description: 'Bright, floral notes with citrus undertones' },
+              { id: 2, name: 'House Blend Espresso', price: '$22', image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=300', rating: 5, description: 'Rich, full-bodied blend perfect for espresso' },
+              { id: 3, name: 'Colombian Dark Roast', price: '$26', image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=300', rating: 4, description: 'Bold, chocolatey flavor with smoky finish' }
+            ];
+            testimonials = [
+              { name: 'Maria S.', text: 'The best coffee in town! The Ethiopian blend is absolutely divine.', rating: 5 },
+              { name: 'David L.', text: 'Perfect espresso every time. Love the cozy atmosphere.', rating: 5 },
+              { name: 'Sarah W.', text: 'Amazing quality beans and friendly baristas. Highly recommend!', rating: 5 }
+            ];
+          }
+          // Cars/Automotive detection
+          else if (promptLower.includes('car') || promptLower.includes('auto') || promptLower.includes('vehicle') || promptLower.includes('dealership')) {
+            businessType = 'automotive';
+            heroTitle = 'Premium Automotive Solutions';
+            heroSubtitle = 'Quality vehicles and professional service you can trust';
+            productsTitle = 'Featured Vehicles';
+            products = [
+              { id: 1, name: '2024 Luxury Sedan', price: '$45,999', image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400', rating: 5, description: 'Premium comfort and advanced technology' },
+              { id: 2, name: 'Electric SUV', price: '$52,999', image: 'https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=400', rating: 5, description: 'Eco-friendly performance with luxury features' },
+              { id: 3, name: 'Sport Coupe', price: '$38,999', image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400', rating: 4, description: 'Thrilling performance and sleek design' }
+            ];
+            testimonials = [
+              { name: 'John D.', text: 'Excellent service and fair prices. Found my dream car here!', rating: 5 },
+              { name: 'Lisa K.', text: 'Professional team helped me through the entire process seamlessly.', rating: 5 },
+              { name: 'Mike R.', text: 'Great selection of quality vehicles. Highly recommend this dealership!', rating: 5 }
+            ];
+          }
+          // Fashion/Clothing detection
+          else if (promptLower.includes('fashion') || promptLower.includes('clothing') || promptLower.includes('apparel') || promptLower.includes('boutique')) {
+            businessType = 'fashion store';
+            heroTitle = 'Fashion Forward Style';
+            heroSubtitle = 'Discover the latest trends and timeless classics';
+            productsTitle = 'New Arrivals';
+            products = [
+              { id: 1, name: 'Designer Jacket', price: '$199', image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400', rating: 5, description: 'Premium quality with contemporary style' },
+              { id: 2, name: 'Casual Sneakers', price: '$129', image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400', rating: 5, description: 'Comfortable and trendy for everyday wear' },
+              { id: 3, name: 'Elegant Dress', price: '$159', image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400', rating: 4, description: 'Perfect for special occasions and events' }
+            ];
+            testimonials = [
+              { name: 'Emma T.', text: 'Love the quality and style! Always find something perfect here.', rating: 5 },
+              { name: 'Alex P.', text: 'Great customer service and amazing fashion pieces.', rating: 5 },
+              { name: 'Sophie M.', text: 'My go-to store for trendy and affordable fashion.', rating: 5 }
+            ];
+          }
+          // Tech/Electronics detection
+          else if (promptLower.includes('tech') || promptLower.includes('electronics') || promptLower.includes('gadget') || promptLower.includes('smartphone')) {
+            businessType = 'tech store';
+            heroTitle = 'Cutting-Edge Technology';
+            heroSubtitle = 'Latest gadgets and innovative solutions for modern life';
+            productsTitle = 'Tech Essentials';
+            products = [
+              { id: 1, name: 'Wireless Headphones', price: '$299', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400', rating: 5, description: 'Premium sound quality with noise cancellation' },
+              { id: 2, name: 'Smart Watch', price: '$399', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', rating: 5, description: 'Advanced health tracking and connectivity features' },
+              { id: 3, name: 'Laptop Stand', price: '$79', image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400', rating: 4, description: 'Ergonomic design for better productivity' }
+            ];
+            testimonials = [
+              { name: 'Ryan B.', text: 'Top-notch tech products with excellent customer support!', rating: 5 },
+              { name: 'Jessica H.', text: 'Found exactly what I needed. Great prices and fast shipping.', rating: 5 },
+              { name: 'Tom C.', text: 'Quality products and knowledgeable staff. Highly satisfied!', rating: 5 }
+            ];
+          }
+          // Restaurant/Food detection
+          else if (promptLower.includes('restaurant') || promptLower.includes('food') || promptLower.includes('dining') || promptLower.includes('cuisine')) {
+            businessType = 'restaurant';
+            heroTitle = 'Exceptional Dining Experience';
+            heroSubtitle = 'Fresh ingredients, authentic flavors, memorable moments';
+            productsTitle = 'Signature Dishes';
+            products = [
+              { id: 1, name: 'Chef\'s Special Pasta', price: '$28', image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=400', rating: 5, description: 'Handmade pasta with seasonal ingredients' },
+              { id: 2, name: 'Grilled Salmon', price: '$32', image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400', rating: 5, description: 'Fresh Atlantic salmon with herbs and vegetables' },
+              { id: 3, name: 'Artisan Pizza', price: '$24', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400', rating: 4, description: 'Wood-fired pizza with premium toppings' }
+            ];
+            testimonials = [
+              { name: 'Maria R.', text: 'Absolutely delicious food and wonderful atmosphere!', rating: 5 },
+              { name: 'James K.', text: 'Best dining experience in the city. Highly recommend!', rating: 5 },
+              { name: 'Anna S.', text: 'Amazing flavors and excellent service. Will definitely return!', rating: 5 }
+            ];
+          }
+          // Default/Generic store
+          else {
+            products = [
+              { id: 1, name: 'Premium Product', price: '$99', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', rating: 5, description: 'High-quality product with amazing features' },
+              { id: 2, name: 'Popular Choice', price: '$79', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400', rating: 4, description: 'Customer favorite with excellent reviews' },
+              { id: 3, name: 'New Arrival', price: '$119', image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400', rating: 5, description: 'Latest addition to our collection' }
+            ];
+            testimonials = [
+              { name: 'Sarah J.', text: 'Amazing quality and service! Highly recommend.', rating: 5 },
+              { name: 'Mike C.', text: 'Best purchase I\'ve made this year. Great value for money!', rating: 5 },
+              { name: 'Emma D.', text: 'Outstanding customer support and fast delivery.', rating: 5 }
+            ];
+          }
+          
+          console.log(`🎯 Detected business type: ${businessType} from prompt: "${prompt}"`);
           
           return {
             siteName: websiteConfig.siteName,
@@ -749,25 +861,22 @@ router.post('/:storeId/ai-prompt',
               navbar: { 
                 type: 'navbar', 
                 code: COMPONENT_TEMPLATES.navbar.example,
-                content: { logo: websiteConfig.siteName },
+                content: { logo: websiteConfig.siteName, businessType },
                 isTemplate: true
               },
               hero: { 
                 type: 'hero', 
                 code: COMPONENT_TEMPLATES.hero.example,
-                content: { title: `Welcome to ${websiteConfig.siteName}`, subtitle: 'Discover amazing products and deals' },
+                content: { title: heroTitle, subtitle: heroSubtitle, businessType },
                 isTemplate: true
               },
               products: { 
                 type: 'products', 
                 code: COMPONENT_TEMPLATES.products.example,
                 content: { 
-                  title: 'Featured Products',
-                  products: [
-                    { id: 1, name: 'Premium Item', price: '$99', image: 'https://picsum.photos/300/300', rating: 5 },
-                    { id: 2, name: 'Popular Choice', price: '$79', image: 'https://picsum.photos/301/300', rating: 4 },
-                    { id: 3, name: 'New Arrival', price: '$119', image: 'https://picsum.photos/302/300', rating: 5 }
-                  ]
+                  title: productsTitle,
+                  products: products,
+                  items: products // Also add as items for compatibility
                 },
                 isTemplate: true
               },
@@ -776,17 +885,15 @@ router.post('/:storeId/ai-prompt',
                 code: '// Testimonials component with customer reviews',
                 content: {
                   title: 'What Our Customers Say',
-                  testimonials: [
-                    { name: 'Sarah J.', text: 'Amazing quality and service!', rating: 5 },
-                    { name: 'Mike C.', text: 'Best purchase I\'ve made this year.', rating: 5 }
-                  ]
+                  testimonials: testimonials,
+                  items: testimonials // Also add as items for compatibility
                 },
                 isTemplate: true
               },
               footer: {
                 type: 'footer',
                 code: '// Footer component with company info',
-                content: { companyName: websiteConfig.siteName },
+                content: { companyName: websiteConfig.siteName, businessType },
                 isTemplate: true
               }
             },
@@ -794,8 +901,10 @@ router.post('/:storeId/ai-prompt',
             metadata: {
               totalComponents: 5,
               generationTime: Date.now() - startTime,
-              apiModel: 'fallback-template',
-              usedFallback: true
+              apiModel: 'prompt-based-generation',
+              usedFallback: true,
+              detectedBusinessType: businessType,
+              originalPrompt: prompt
             }
           };
         });
