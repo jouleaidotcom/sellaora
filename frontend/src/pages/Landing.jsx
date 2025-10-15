@@ -1,8 +1,28 @@
 import { Link } from 'react-router-dom'
 import JoinCommunity from '../components/JoinCommunity'
 import FAQ from '../components/FAQ'
+import { useEffect, useState } from 'react'
+import InviteGate from '../components/InviteGate'
+import Modal from '../components/Modal'
 
 export default function Landing() {
+  const [verified, setVerified] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  useEffect(() => {
+    try {
+      setVerified(sessionStorage.getItem('inviteVerified') === 'true')
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (verified) return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('invite')) setShowInviteModal(true)
+    } catch {}
+  }, [verified])
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       {/* Header */}
@@ -20,8 +40,22 @@ export default function Landing() {
               <a href="https://github.com/jouleaidotcom/sellaora" target="_blank" rel="noreferrer" className="hover:text-white">GitHub</a>
             </nav>
             <div className="flex items-center gap-3">
-              <a href="/login" className="hidden sm:inline-block text-sm text-neutral-300 hover:text-white">Sign in</a>
-              <a href="/signup" className="inline-flex items-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition">Get Started</a>
+              {verified ? (
+                <>
+                  <a href="/login" className="hidden sm:inline-block text-sm text-neutral-300 hover:text-white">Sign in</a>
+                  <a href="/signup" className="inline-flex items-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-black hover:bg-emerald-400 transition">Get Started</a>
+                </>
+              ) : (
+                <div className="hidden sm:flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-1 text-xs text-neutral-300 border border-neutral-800">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Invite only
+                  </span>
+                  <button onClick={() => setShowInviteModal(true)} className="text-sm text-neutral-300 hover:text-white underline underline-offset-4">
+                    Enter code
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -39,14 +73,28 @@ export default function Landing() {
               AI-powered Shopify alternative for entrepreneurs.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a href="/signup" className="inline-flex items-center rounded-md bg-white px-6 py-3 text-neutral-900 font-medium hover:bg-neutral-200 transition">
-                Get Started
-              </a>
+              {verified ? (
+                <a href="/signup" className="inline-flex items-center rounded-md bg-white px-6 py-3 text-neutral-900 font-medium hover:bg-neutral-200 transition">
+                  Get Started
+                </a>
+              ) : (
+                <>
+                  <button onClick={() => setShowInviteModal(true)} className="inline-flex items-center rounded-md bg-white px-6 py-3 text-neutral-900 font-medium hover:bg-neutral-200 transition">
+                    Enter invite code
+                  </button>
+                </>
+              )}
               <a href="#features" className="text-sm text-neutral-300 hover:text-white">Learn more</a>
             </div>
           </div>
         </div>
       </section>
+
+      <Modal open={showInviteModal && !verified} onClose={() => setShowInviteModal(false)} title="Invite required">
+        <InviteGate
+          onVerified={() => { setVerified(true); setShowInviteModal(false) }}
+        />
+      </Modal>
 
       {/* Trusted by */}
       <section aria-label="logos" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
