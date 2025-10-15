@@ -650,7 +650,10 @@ Return COMPLETE, VALID, UNIQUE JSON now.`;
   }
 }
 
-// Main AI generation endpoint
+// Import the new React component generation system
+const { generateReactWebsite, generateReactComponent } = require('../utils/reactComponentAI');
+
+// Main AI generation endpoint - Now generates modern React components
 router.post('/:storeId/ai-prompt', 
   authMiddleware, 
   ownerCheckMiddleware((req) => req.params.storeId), 
@@ -664,7 +667,7 @@ router.post('/:storeId/ai-prompt',
     });
     
     try {
-      const { prompt, mode = 'create' } = req.body;
+      const { prompt, mode = 'create', components, industry } = req.body;
       
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ 
@@ -692,201 +695,850 @@ router.post('/:storeId/ai-prompt',
         });
       }
 
-      const storeContext = {
-        existingTheme: store.theme,
-        existingPages: store.layout?.pages || []
-      };
-
-      const systemPrompt = buildEnhancedPrompt(prompt, storeContext, 0);
-
       const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      console.log('🎨 Generating modern React website for prompt:', prompt);
 
-      console.log('🎨 Generating website for prompt:', prompt);
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-    
-    if (process.env.OPENAI_PROJECT_ID) {
-      headers['OpenAI-Project'] = process.env.OPENAI_PROJECT_ID;
-    }
-    if (process.env.OPENAI_ORG_ID) {
-      headers['OpenAI-Organization'] = process.env.OPENAI_ORG_ID;
-    }
-    
-    console.log('🔑 Making OpenAI API request with headers:', Object.keys(headers));
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers,
-        body: JSON.stringify({
-          model: modelName,
-          messages: [
-            { role: 'user', content: systemPrompt }
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 1.1,
-          top_p: 0.95,
-          max_tokens: 4096
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`❌ OpenAI API error:`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errText,
-          apiKey: apiKey ? `${apiKey.substring(0, 20)}...` : 'missing',
-          projectId: process.env.OPENAI_PROJECT_ID || 'not set',
-          orgId: process.env.OPENAI_ORG_ID || 'not set'
-        });
-        
-        let message = 'AI service temporarily unavailable';
-        if (response.status === 401) {
-          message = 'Invalid API key or insufficient permissions';
-        } else if (response.status === 429) {
-          message = 'Rate limit exceeded, please try again later';
-        } else if (response.status === 404) {
-          message = 'Model not found or not accessible';
-        }
-        
-        return res.status(500).json({
-          success: false,
-          message
-        });
+      // Determine industry from prompt or use provided industry
+      let detectedIndustry = industry || 'ecommerce';
+      const promptLower = prompt.toLowerCase();
+      
+      if (promptLower.includes('saas') || promptLower.includes('software')) {
+        detectedIndustry = 'saas';
+      } else if (promptLower.includes('portfolio') || promptLower.includes('designer')) {
+        detectedIndustry = 'portfolio';
+      } else if (promptLower.includes('restaurant') || promptLower.includes('food')) {
+        detectedIndustry = 'restaurant';
+      } else if (promptLower.includes('agency') || promptLower.includes('marketing')) {
+        detectedIndustry = 'agency';
       }
 
-      const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content || '';
-      
-      const jsonStr = extractJsonString(content);
-      let aiResult;
+      // Configure website generation
+      const websiteConfig = {
+        siteName: store.storeName || store.name || 'Your Store',
+        industry: detectedIndustry,
+        theme: promptLower.includes('dark') ? 'dark' : 'modern',
+        components: components || ['navbar', 'hero', 'products', 'features', 'testimonials', 'footer'],
+        prompt: prompt
+      };
 
       try {
-        aiResult = tryParseJsonWithRepairs(jsonStr);
-        console.log('✓ AI Result parsed successfully');
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError);
+        // Send immediate response that generation started
+        console.log('🚀 Starting React website generation...');
         
-        return res.status(500).json({ 
-          success: false, 
-          message: 'AI returned invalid format. Please try again.' 
+        // Generate React components with timeout protection
+        const startTime = Date.now();
+        
+        const reactWebsite = await Promise.race([
+          generateReactWebsite(websiteConfig, apiKey, modelName),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Generation timeout after 90 seconds')), 90000)
+          )
+        ]).catch(async (error) => {
+          console.warn(`⚠️ AI generation failed: ${error.message}`);
+          console.log('🔄 Using enhanced fallback with templates...');
+          
+          // Enhanced fallback using our templates
+          const { COMPONENT_TEMPLATES } = require('../utils/reactComponentTemplates');
+          
+          return {
+            siteName: websiteConfig.siteName,
+            industry: detectedIndustry,
+            theme: websiteConfig.theme,
+            componentOrder: ['navbar', 'hero', 'products', 'testimonials', 'footer'],
+            components: {
+              navbar: { 
+                type: 'navbar', 
+                code: COMPONENT_TEMPLATES.navbar.example,
+                content: { logo: websiteConfig.siteName },
+                isTemplate: true
+              },
+              hero: { 
+                type: 'hero', 
+                code: COMPONENT_TEMPLATES.hero.example,
+                content: { title: `Welcome to ${websiteConfig.siteName}`, subtitle: 'Discover amazing products and deals' },
+                isTemplate: true
+              },
+              products: { 
+                type: 'products', 
+                code: COMPONENT_TEMPLATES.products.example,
+                content: { 
+                  title: 'Featured Products',
+                  products: [
+                    { id: 1, name: 'Premium Item', price: '$99', image: 'https://picsum.photos/300/300', rating: 5 },
+                    { id: 2, name: 'Popular Choice', price: '$79', image: 'https://picsum.photos/301/300', rating: 4 },
+                    { id: 3, name: 'New Arrival', price: '$119', image: 'https://picsum.photos/302/300', rating: 5 }
+                  ]
+                },
+                isTemplate: true
+              },
+              testimonials: {
+                type: 'testimonials',
+                code: '// Testimonials component with customer reviews',
+                content: {
+                  title: 'What Our Customers Say',
+                  testimonials: [
+                    { name: 'Sarah J.', text: 'Amazing quality and service!', rating: 5 },
+                    { name: 'Mike C.', text: 'Best purchase I\'ve made this year.', rating: 5 }
+                  ]
+                },
+                isTemplate: true
+              },
+              footer: {
+                type: 'footer',
+                code: '// Footer component with company info',
+                content: { companyName: websiteConfig.siteName },
+                isTemplate: true
+              }
+            },
+            generatedAt: new Date().toISOString(),
+            metadata: {
+              totalComponents: 5,
+              generationTime: Date.now() - startTime,
+              apiModel: 'fallback-template',
+              usedFallback: true
+            }
+          };
+        });
+        
+        const generationTime = Date.now() - startTime;
+        console.log(`✅ React website generated in ${generationTime}ms ${reactWebsite.metadata?.usedFallback ? '(with template fallback)' : ''}`);
+        
+        
+        // Convert React components to layout structure for compatibility
+        const pages = [{
+          name: 'Home',
+          path: '/',
+          description: 'Main homepage',
+          sections: reactWebsite.componentOrder.map(componentType => {
+            const component = reactWebsite.components[componentType];
+            return {
+              id: `${componentType}-${Date.now()}`,
+              type: componentType,
+              reactComponent: {
+                code: component.code,
+                props: component.content,
+                variant: component.variant,
+                theme: component.theme,
+                generated: true,
+                isTemplate: component.isTemplate || false
+              },
+              // Legacy compatibility fields
+              ...component.content
+            };
+          })
+        }];
+
+        // Add additional pages
+        if (detectedIndustry === 'ecommerce') {
+          pages.push(
+            {
+              name: 'Products',
+              path: '/products',
+              description: 'Product catalog',
+              sections: [{
+                id: `products-page-${Date.now()}`,
+                type: 'products',
+                title: 'All Products',
+                showFilters: true,
+                reactComponent: {
+                  generated: true,
+                  type: 'products'
+                }
+              }]
+            },
+            {
+              name: 'About',
+              path: '/about',
+              description: 'About us page',
+              sections: [{
+                id: `about-${Date.now()}`,
+                type: 'textblock',
+                title: 'About Us',
+                content: `Learn more about ${websiteConfig.siteName} and our mission to provide exceptional products and service.`
+              }]
+            },
+            {
+              name: 'Contact',
+              path: '/contact',
+              description: 'Contact information',
+              sections: [{
+                id: `contact-${Date.now()}`,
+                type: 'contact',
+                title: 'Get in Touch',
+                subtitle: 'We\'d love to hear from you'
+              }]
+            }
+          );
+        }
+
+        const normalized = {
+          theme: {
+            primaryColor: '#3b82f6',
+            secondaryColor: '#1e40af', 
+            accentColor: '#f59e0b',
+            backgroundColor: '#ffffff',
+            textColor: '#1f2937',
+            bannerUrl: '',
+            logoUrl: '',
+            fonts: 'Inter, system-ui, sans-serif',
+            stylePreset: websiteConfig.theme,
+            borderRadius: 'lg',
+            shadow: 'soft',
+            layoutPattern: 'modern-react'
+          },
+          layout: { pages },
+          metadata: {
+            siteName: websiteConfig.siteName,
+            description: `Modern ${detectedIndustry} website generated with AI`,
+            industry: detectedIndustry,
+            generatedWith: 'react-components',
+            totalComponents: Object.keys(reactWebsite.components).length,
+            generatedAt: reactWebsite.generatedAt
+          },
+          reactWebsite: reactWebsite // Store the full React website data
+        };
+
+        const updated = await Store.findByIdAndUpdate(
+          store._id,
+          {
+            theme: normalized.theme,
+            layout: normalized.layout,
+            metadata: normalized.metadata,
+            reactWebsite: reactWebsite // Store React components data
+          },
+          { new: true }
+        );
+
+        console.log(`✓ Store ${store._id} updated successfully with React components`);
+        console.log(`  - Pages: ${pages.length}`);
+        console.log(`  - React Components: ${Object.keys(reactWebsite.components).length}`);
+        console.log(`  - Components: ${reactWebsite.componentOrder.join(', ')}`);
+        console.log(`  - Industry: ${detectedIndustry}`);
+        console.log(`  - Theme: ${websiteConfig.theme}`);
+
+        return res.json({ 
+          success: true, 
+          data: { 
+            store: updated,
+            generated: {
+              pageCount: pages.length,
+              componentCount: Object.keys(reactWebsite.components).length,
+              components: reactWebsite.componentOrder,
+              industry: detectedIndustry,
+              theme: websiteConfig.theme,
+              generationType: 'react-components',
+              pages: pages.map(p => ({ 
+                name: p.name, 
+                path: p.path,
+                sectionCount: p.sections.length,
+                hasReactComponents: p.sections.some(s => s.reactComponent)
+              }))
+            },
+            reactWebsite: {
+              siteName: reactWebsite.siteName,
+              totalComponents: reactWebsite.metadata.totalComponents,
+              generatedAt: reactWebsite.generatedAt,
+              components: Object.keys(reactWebsite.components)
+            }
+          } 
+        });
+
+      } catch (generationError) {
+        console.error('❌ React website generation failed:', generationError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to generate React components. Please try again.',
+          error: generationError.message
         });
       }
-
-      // Validate response structure
-      const isValid = aiResult?.theme && 
-                     aiResult?.layout?.pages && 
-                     Array.isArray(aiResult.layout.pages) && 
-                     aiResult.layout.pages.length > 0;
-
-      if (!isValid) {
-        console.warn('Incomplete AI response, attempting repair...');
-        const repaired = await attemptRepair(apiKey, modelName, prompt, aiResult || {}, 0);
-        
-        if (repaired && repaired.theme && repaired.layout?.pages?.length > 0) {
-          aiResult = repaired;
-          console.log('✓ Response repaired successfully');
-        } else {
-          console.error('Repair failed');
-          return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to generate valid design. Please try again.' 
-          });
-        }
-      }
-
-      // Log section diversity for debugging
-      const sectionTypes = aiResult.layout.pages.flatMap(p => 
-        p.sections.map(s => s.type)
-      );
-      const uniqueTypes = [...new Set(sectionTypes)];
-      console.log('📊 Section variety:', {
-        total: sectionTypes.length,
-        unique: uniqueTypes.length,
-        types: uniqueTypes
-      });
-
-      if (uniqueTypes.length < 3) {
-        console.warn('⚠️  Low section variety, attempting another generation...');
-        const repaired = await attemptRepair(apiKey, modelName, prompt, aiResult, 1);
-        if (repaired) {
-          aiResult = repaired;
-          console.log('✓ Increased variety in retry');
-        }
-      }
-
-      let normalizedLayout = normalizeLayout(aiResult.layout);
-      // Enforce core pages first, then navbar/footer so nav links include all pages
-      normalizedLayout = ensureCorePages(normalizedLayout, store);
-      normalizedLayout = ensureNavAndFooter(normalizedLayout, store);
-
-      const normalized = {
-        theme: {
-          primaryColor: aiResult.theme.primaryColor || '#3b82f6',
-          secondaryColor: aiResult.theme.secondaryColor || '#1e40af',
-          accentColor: aiResult.theme.accentColor || '#f59e0b',
-          backgroundColor: aiResult.theme.backgroundColor || '#ffffff',
-          textColor: aiResult.theme.textColor || '#1f2937',
-          bannerUrl: aiResult.theme.bannerUrl || '',
-          logoUrl: aiResult.theme.logoUrl || '',
-          fonts: aiResult.theme.fonts || 'Inter, system-ui, sans-serif',
-          stylePreset: aiResult.theme.stylePreset || 'modern',
-          borderRadius: aiResult.theme.borderRadius || 'lg',
-          shadow: aiResult.theme.shadow || 'soft',
-          layoutPattern: aiResult.theme.layoutPattern || 'grid-heavy'
-        },
-        layout: normalizedLayout,
-        metadata: aiResult.metadata || {
-          siteName: store.name || 'My Store',
-          description: 'AI-generated website',
-          industry: 'General'
-        }
-      };
-
-      const updated = await Store.findByIdAndUpdate(
-        store._id,
-        {
-          theme: normalized.theme,
-          layout: normalized.layout,
-          metadata: normalized.metadata
-        },
-        { new: true }
-      );
-
-      console.log(`✓ Store ${store._id} updated successfully`);
-      console.log(`  - Pages: ${normalizedLayout.pages.length}`);
-      console.log(`  - Sections: ${sectionTypes.length}`);
-      console.log(`  - Unique section types: ${uniqueTypes.length}`);
-      console.log(`  - Style: ${normalized.theme.stylePreset}`);
-      console.log(`  - Layout pattern: ${normalized.theme.layoutPattern}`);
-
-      return res.json({ 
-        success: true, 
-        data: { 
-          store: updated,
-          generated: {
-            pageCount: normalizedLayout.pages.length,
-            sectionCount: sectionTypes.length,
-            uniqueSectionTypes: uniqueTypes.length,
-            stylePreset: normalized.theme.stylePreset,
-            layoutPattern: normalized.theme.layoutPattern,
-            pages: normalizedLayout.pages.map(p => ({ 
-              name: p.name, 
-              path: p.path,
-              sectionCount: p.sections.length 
-            }))
-          }
-        } 
-      });
 
     } catch (error) {
       console.error('AI generation error:', error);
       return res.status(500).json({ 
         success: false, 
         message: 'Failed to generate store design. Please try again.' 
+      });
+    }
+  }
+);
+
+// Generate individual React component
+router.post('/:storeId/generate-component', 
+  authMiddleware,
+  ownerCheckMiddleware((req) => req.params.storeId),
+  async (req, res) => {
+    try {
+      const { componentType, content = {}, options = {} } = req.body;
+      const apiKey = process.env.OPENAI_API_KEY;
+      const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+      if (!componentType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Component type is required'
+        });
+      }
+
+      console.log(`🎨 Generating individual ${componentType} component`);
+
+      const component = await generateReactComponent(
+        componentType,
+        content,
+        { ...options, apiKey, modelName }
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          component,
+          generated: {
+            type: component.type,
+            codeLength: component.code.length,
+            variant: component.variant,
+            theme: component.theme,
+            isTemplate: component.isTemplate || false
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Component generation error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate component. Please try again.',
+        error: error.message
+      });
+    }
+  }
+);
+
+// Get React website data
+router.get('/:storeId/react-website',
+  authMiddleware,
+  ownerCheckMiddleware((req) => req.params.storeId),
+  async (req, res) => {
+    try {
+      const store = req.store;
+      
+      if (!store.reactWebsite) {
+        return res.status(404).json({
+          success: false,
+          message: 'No React website generated for this store'
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          reactWebsite: store.reactWebsite,
+          metadata: store.metadata
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error fetching React website:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch React website data'
+      });
+    }
+  }
+);
+
+// Generate preview HTML for React components
+router.get('/:storeId/preview',
+  (req, res, next) => {
+    // Handle token from query param for iframe requests
+    if (req.query.token && !req.headers.authorization) {
+      req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    next();
+  },
+  authMiddleware,
+  ownerCheckMiddleware((req) => req.params.storeId),
+  async (req, res) => {
+    try {
+      const store = req.store;
+      
+      if (!store.layout || !store.layout.pages) {
+        return res.status(404).json({
+          success: false,
+          message: 'No website layout found for preview'
+        });
+      }
+
+      // Generate a preview HTML page that can render the React components
+      const previewHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${store.metadata?.siteName || store.storeName || 'Preview'}</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+      .preview-container { min-height: 100vh; background: #f9fafb; }
+      .preview-section { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+      const { createRoot } = ReactDOM;
+      
+      // Store data
+      const storeData = ${JSON.stringify({
+        name: store.metadata?.siteName || store.storeName,
+        layout: store.layout,
+        theme: store.theme,
+        reactWebsite: store.reactWebsite
+      }, null, 2)};
+      
+      // Simple section renderer
+      const SectionRenderer = ({ section }) => {
+        const sectionStyle = {
+          backgroundColor: section.bgColor || (section.type === 'hero' ? '#f3f4f6' : '#ffffff'),
+          color: section.textColor || '#1f2937',
+          padding: section.type === 'navbar' ? '0' : '4rem 2rem',
+          minHeight: section.type === 'hero' ? '80vh' : 'auto',
+          display: section.type === 'hero' ? 'flex' : 'block',
+          alignItems: section.type === 'hero' ? 'center' : 'normal',
+          justifyContent: section.type === 'hero' ? 'center' : 'normal'
+        };
+        
+        const renderContent = () => {
+          switch (section.type) {
+            case 'navbar':
+              return (
+                <nav style={{ 
+                  background: 'rgba(255, 255, 255, 0.95)', 
+                  backdropFilter: 'blur(10px)',
+                  borderBottom: '1px solid rgba(229, 231, 235, 0.8)',
+                  color: '#1f2937', 
+                  padding: '1rem 2rem', 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  position: 'sticky',
+                  top: '0',
+                  zIndex: '50',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', 
+                      borderRadius: '50%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: 'white', 
+                      fontWeight: 'bold',
+                      fontSize: '1.2rem'
+                    }}>
+                      {storeData.name[0]?.toUpperCase() || 'S'}
+                    </div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                      {storeData.name}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
+                    <div style={{ display: 'flex', gap: '2rem' }}>
+                      <a href="#" style={{ 
+                        color: '#1f2937', 
+                        textDecoration: 'none', 
+                        fontWeight: '600',
+                        position: 'relative',
+                        transition: 'color 0.2s'
+                      }}>Home</a>
+                      <a href="#" style={{ 
+                        color: '#1f2937', 
+                        textDecoration: 'none', 
+                        fontWeight: '600',
+                        position: 'relative',
+                        transition: 'color 0.2s'
+                      }}>Products</a>
+                      <a href="#" style={{ 
+                        color: '#1f2937', 
+                        textDecoration: 'none', 
+                        fontWeight: '600',
+                        position: 'relative',
+                        transition: 'color 0.2s'
+                      }}>Categories</a>
+                      <a href="#" style={{ 
+                        color: '#1f2937', 
+                        textDecoration: 'none', 
+                        fontWeight: '600',
+                        position: 'relative',
+                        transition: 'color 0.2s'
+                      }}>About</a>
+                      <a href="#" style={{ 
+                        color: '#1f2937', 
+                        textDecoration: 'none', 
+                        fontWeight: '600',
+                        position: 'relative',
+                        transition: 'color 0.2s'
+                      }}>Contact</a>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {/* Search Icon */}
+                      <button style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        borderRadius: '0.5rem',
+                        transition: 'background-color 0.2s'
+                      }}>
+                        🔍
+                      </button>
+                      
+                      {/* User Account */}
+                      <button style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        borderRadius: '0.5rem',
+                        transition: 'background-color 0.2s'
+                      }}>
+                        👤
+                      </button>
+                      
+                      {/* Shopping Cart */}
+                      <button style={{
+                        position: 'relative',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        borderRadius: '0.5rem',
+                        transition: 'background-color 0.2s'
+                      }}>
+                        🛒
+                        <span style={{
+                          position: 'absolute',
+                          top: '0',
+                          right: '0',
+                          width: '20px',
+                          height: '20px',
+                          backgroundColor: '#ef4444',
+                          borderRadius: '50%',
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transform: 'translate(25%, -25%)'
+                        }}>
+                          3
+                        </span>
+                      </button>
+                      
+                      {/* CTA Button */}
+                      <button style={{
+                        background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        border: 'none',
+                        borderRadius: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        boxShadow: '0 4px 6px rgba(59, 130, 246, 0.25)'
+                      }}>
+                        Sign In
+                      </button>
+                    </div>
+                  </div>
+                </nav>
+              );
+              
+            case 'hero':
+              return (
+                <div style={{ textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
+                  <h1 style={{ fontSize: '3.5rem', fontWeight: '900', marginBottom: '1rem', background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    {section.title || section.reactComponent?.content?.title || \`Welcome to \${storeData.name}\`}
+                  </h1>
+                  <p style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '2rem' }}>
+                    {section.subtitle || section.reactComponent?.content?.subtitle || 'Discover amazing products and exceptional service'}
+                  </p>
+                  <button style={{ background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', color: 'white', padding: '1rem 2rem', border: 'none', borderRadius: '0.5rem', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Explore Now
+                  </button>
+                </div>
+              );
+              
+            case 'products':
+              return (
+                <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+                    <h2 style={{ fontSize: '3rem', fontWeight: '900', marginBottom: '1rem', color: '#1f2937' }}>
+                      {section.title || 'Featured Products'}
+                    </h2>
+                    <p style={{ fontSize: '1.125rem', color: '#6b7280', maxWidth: '600px', margin: '0 auto' }}>
+                      Discover our carefully curated selection of premium products
+                    </p>
+                  </div>
+                  
+                  {/* Filter Tabs */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '3rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', backgroundColor: '#f3f4f6', padding: '0.5rem', borderRadius: '0.75rem' }}>
+                      {['All', 'Featured', 'New Arrivals', 'Best Sellers'].map((tab, idx) => (
+                        <button key={tab} style={{
+                          padding: '0.75rem 1.5rem',
+                          borderRadius: '0.5rem',
+                          border: 'none',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          backgroundColor: idx === 0 ? '#3b82f6' : 'transparent',
+                          color: idx === 0 ? 'white' : '#6b7280'
+                        }}>
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                    {[
+                      { name: 'Premium Wireless Headphones', price: '$199', originalPrice: '$249', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400', rating: 5, reviews: 128, badge: 'Best Seller' },
+                      { name: 'Smart Fitness Watch', price: '$299', originalPrice: '$399', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', rating: 5, reviews: 89, badge: 'New' },
+                      { name: 'Professional Camera Lens', price: '$899', image: 'https://images.unsplash.com/photo-1606983340126-99ab4feaa64a?w=400', rating: 4, reviews: 67 },
+                      { name: 'Minimalist Backpack', price: '$129', originalPrice: '$179', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400', rating: 5, reviews: 203, badge: 'Popular' }
+                    ].map((product, i) => (
+                      <div key={i} style={{
+                        background: 'white',
+                        borderRadius: '1.5rem',
+                        padding: '1.5rem',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                        border: '1px solid #f3f4f6',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.transform = 'translateY(-4px)';
+                        e.target.style.boxShadow = '0 20px 25px rgba(0,0,0,0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
+                      }}>
+                        <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                          <img src={product.image} alt={product.name} style={{
+                            width: '100%',
+                            height: '240px',
+                            objectFit: 'cover',
+                            borderRadius: '1rem'
+                          }} />
+                          {product.badge && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '1rem',
+                              left: '1rem',
+                              backgroundColor: product.badge === 'New' ? '#10b981' : product.badge === 'Best Seller' ? '#f59e0b' : '#8b5cf6',
+                              color: 'white',
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
+                            }}>
+                              {product.badge}
+                            </span>
+                          )}
+                          <button style={{
+                            position: 'absolute',
+                            top: '1rem',
+                            right: '1rem',
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          }}>
+                            ♡
+                          </button>
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex' }}>
+                            {[...Array(5)].map((_, starIdx) => (
+                              <span key={starIdx} style={{ color: starIdx < product.rating ? '#fbbf24' : '#d1d5db', fontSize: '1rem' }}>★</span>
+                            ))}
+                          </div>
+                          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>({product.reviews})</span>
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '0.5rem', color: '#1f2937' }}>{product.name}</h3>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                          <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#3b82f6' }}>{product.price}</span>
+                          {product.originalPrice && (
+                            <span style={{ fontSize: '1rem', color: '#9ca3af', textDecoration: 'line-through' }}>{product.originalPrice}</span>
+                          )}
+                          {product.originalPrice && (
+                            <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: '600' }}>
+                              Save ${parseInt(product.originalPrice.slice(1)) - parseInt(product.price.slice(1))}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          <button style={{
+                            flex: '1',
+                            background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                            color: 'white',
+                            padding: '0.875rem',
+                            border: 'none',
+                            borderRadius: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            transition: 'transform 0.2s'
+                          }}>
+                            🛒 Add to Cart
+                          </button>
+                          <button style={{
+                            padding: '0.875rem',
+                            backgroundColor: '#f3f4f6',
+                            border: 'none',
+                            borderRadius: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            👁️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+              
+            case 'testimonials':
+              return (
+                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                  <h2 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: '900', marginBottom: '3rem' }}>
+                    {section.title || 'What Our Customers Say'}
+                  </h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                    {['Sarah Johnson', 'Mike Chen'].map((name, i) => (
+                      <div key={i} style={{ background: 'white', borderRadius: '1rem', padding: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        <div style={{ display: 'flex', marginBottom: '1rem' }}>
+                          {[1,2,3,4,5].map(star => <span key={star} style={{ color: '#fbbf24', fontSize: '1.25rem' }}>★</span>)}
+                        </div>
+                        <p style={{ fontStyle: 'italic', marginBottom: '1rem', color: '#4b5563' }}>
+                          "Amazing products and exceptional service! Highly recommend."
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '40px', height: '40px', background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                            {name[0]}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 'bold' }}>{name}</div>
+                            <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>Verified Customer</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+              
+            case 'footer':
+              return (
+                <footer style={{ background: '#1f2937', color: 'white', padding: '3rem 2rem 1rem' }}>
+                  <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>{storeData.name}</h3>
+                      <p style={{ color: '#9ca3af' }}>Your trusted partner for quality products and exceptional service.</p>
+                    </div>
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Quick Links</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <a href="#" style={{ color: '#9ca3af', textDecoration: 'none' }}>About Us</a>
+                        <a href="#" style={{ color: '#9ca3af', textDecoration: 'none' }}>Products</a>
+                        <a href="#" style={{ color: '#9ca3af', textDecoration: 'none' }}>Contact</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '1px solid #374151', marginTop: '2rem', paddingTop: '1rem', textAlign: 'center', color: '#9ca3af' }}>
+                    © 2024 {storeData.name}. All rights reserved.
+                  </div>
+                </footer>
+              );
+              
+            default:
+              return (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{section.title || section.type}</h2>
+                  <p style={{ color: '#6b7280' }}>{section.subtitle || section.content || 'Content section'}</p>
+                </div>
+              );
+          }
+        };
+        
+        return (
+          <section className="preview-section" style={sectionStyle}>
+            {renderContent()}
+          </section>
+        );
+      };
+      
+      // Main App component
+      const App = () => {
+        const homePage = storeData.layout.pages.find(p => p.name === 'Home') || storeData.layout.pages[0];
+        const sections = homePage?.sections || [];
+        
+        return (
+          <div className="preview-container">
+            {sections.map((section, index) => (
+              <SectionRenderer key={section.id || index} section={section} />
+            ))}
+          </div>
+        );
+      };
+      
+      // Render the app
+      const root = createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+</body>
+</html>`;
+
+      // Set content type to HTML and return the preview
+      res.setHeader('Content-Type', 'text/html');
+      return res.send(previewHTML);
+
+    } catch (error) {
+      console.error('❌ Error generating preview:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to generate preview'
       });
     }
   }

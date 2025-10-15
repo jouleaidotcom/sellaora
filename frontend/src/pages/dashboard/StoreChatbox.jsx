@@ -194,7 +194,7 @@ const StoreChatbox = () => {
                     </div>
                   )}
                   <div className={`p-4 h-full overflow-auto ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <StorePreview theme={theme} layout={layout} />
+                    <StorePreview storeId={storeId} theme={theme} layout={layout} />
                     {!theme && (
                       <div className="text-sm text-neutral-400">No theme yet</div>
                     )}
