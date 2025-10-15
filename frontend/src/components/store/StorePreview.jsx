@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Helpers
 const hexToRgb = (hex) => {
@@ -837,119 +837,504 @@ const renderSection = (section, idx, theme) => {
   );
 };
 
-// Main Component
-const StorePreview = ({ theme = {}, layout = {} }) => {
-  const { pageBg, primary, preset } = getThemeTokens(theme);
-  const fontFamily = theme?.fonts || 'Inter, system-ui, sans-serif';
+const SimpleFallback = ({ storeId, theme, layout }) => {
+  const sections = layout?.sections || layout?.pages?.[0]?.sections || [];
+  const storeName = theme?.siteName || theme?.name || 'Your Store';
   
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  
-  const pages = Array.isArray(layout?.pages) && layout.pages.length > 0
-    ? layout.pages
-    : layout?.sections
-      ? [{ name: 'Home', path: '/', sections: layout.sections }]
-      : [{ name: 'Home', path: '/', sections: [] }];
-  
-  const currentPage = pages[currentPageIndex] || pages[0];
-  const currentSections = currentPage?.sections || [];
+  const renderSection = (section, index) => {
+    const sectionType = section.type?.toLowerCase();
+    
+    switch (sectionType) {
+      case 'navbar':
+        return (
+          <nav key={index} className="bg-white shadow-sm border-b sticky top-0 z-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center py-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {storeName[0]?.toUpperCase()}
+                  </div>
+                  <span className="text-xl font-bold text-gray-900">{storeName}</span>
+                </div>
+                <div className="hidden md:flex space-x-8">
+                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">Home</a>
+                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">Products</a>
+                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">About</a>
+                  <a href="#" className="text-gray-700 hover:text-blue-600 font-medium">Contact</a>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <button className="text-gray-600 hover:text-blue-600">🔍</button>
+                  <button className="text-gray-600 hover:text-blue-600">👤</button>
+                  <button className="relative text-gray-600 hover:text-blue-600">
+                    🛒
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">2</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </nav>
+        );
+        
+      case 'hero':
+        return (
+          <section key={index} className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+            <div className="max-w-7xl mx-auto px-4 text-center">
+              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {section.title || section.heading || 'Welcome to ' + storeName}
+                </span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                {section.subtitle || section.subheading || 'Discover amazing products and exceptional service'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all">
+                  Shop Now
+                </button>
+                <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-50 transition-all">
+                  Learn More
+                </button>
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'products':
+      case 'collection':
+        return (
+          <section key={index} className="py-16 bg-white">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {section.title || 'Featured Products'}
+                </h2>
+                <p className="text-lg text-gray-600">Discover our carefully curated collection</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="group cursor-pointer">
+                    <div className="bg-gray-100 rounded-xl aspect-square mb-4 flex items-center justify-center group-hover:shadow-xl transition-shadow">
+                      <span className="text-4xl">📦</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Premium Product {i}</h3>
+                    <p className="text-gray-600 mb-3">High-quality product with amazing features</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold text-blue-600">$99</span>
+                      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'testimonials':
+        return (
+          <section key={index} className="py-16 bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  {section.title || 'What Our Customers Say'}
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {['Sarah J.', 'Mike C.', 'Emma D.'].map((name, i) => (
+                  <div key={i} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex mb-4">
+                      {[...Array(5)].map((_, star) => (
+                        <span key={star} className="text-yellow-400 text-lg">★</span>
+                      ))}
+                    </div>
+                    <p className="text-gray-600 mb-4 italic">
+                      "Amazing products and exceptional service! Highly recommend to everyone."
+                    </p>
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                        {name[0]}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">{name}</div>
+                        <div className="text-sm text-gray-500">Verified Customer</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+        
+      case 'footer':
+        return (
+          <footer key={index} className="bg-gray-900 text-white py-12">
+            <div className="max-w-7xl mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {storeName[0]?.toUpperCase()}
+                    </div>
+                    <span className="text-xl font-bold">{storeName}</span>
+                  </div>
+                  <p className="text-gray-400 mb-4">Your trusted partner for quality products and exceptional service.</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-4">Quick Links</h3>
+                  <ul className="space-y-2 text-gray-400">
+                    <li><a href="#" className="hover:text-white">Home</a></li>
+                    <li><a href="#" className="hover:text-white">Products</a></li>
+                    <li><a href="#" className="hover:text-white">About</a></li>
+                    <li><a href="#" className="hover:text-white">Contact</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-4">Contact</h3>
+                  <ul className="space-y-2 text-gray-400">
+                    <li>📧 hello@store.com</li>
+                    <li>📞 (555) 123-4567</li>
+                    <li>📍 123 Business St</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; 2024 {storeName}. All rights reserved.</p>
+              </div>
+            </div>
+          </footer>
+        );
+        
+      default:
+        return (
+          <div key={index} className="py-8 bg-white">
+            <div className="max-w-7xl mx-auto px-4 text-center">
+              <div className="bg-gray-100 rounded-lg p-8">
+                <h3 className="text-lg font-semibold mb-2">{section.type || 'Custom Section'}</h3>
+                <p className="text-gray-600">{section.title || section.heading || 'Content section'}</p>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
   
   return (
-    <div 
-      className="w-full min-h-screen" 
-      style={{ 
-        fontFamily, 
-        background: pageBg,
-        backgroundColor: pageBg.includes('gradient') ? undefined : pageBg
-      }}
-    >
-      <div className="p-6">
-        {/* Theme Info Bar */}
-        <div className="mb-6 flex items-center gap-3 flex-wrap">
-          {theme.logoUrl && (
-            <img src={theme.logoUrl} alt="logo" className="w-12 h-12 rounded-lg shadow" />
-          )}
-          <div 
-            className="px-4 py-2 rounded-lg text-white font-semibold shadow-md"
-            style={{ backgroundColor: primary }}
-          >
-            Primary Color
-          </div>
-          {preset && (
-            <div className="px-4 py-2 rounded-lg bg-neutral-800 text-white text-sm font-medium">
-              Style: {preset}
-            </div>
-          )}
-          {theme.layoutPattern && (
-            <div className="px-4 py-2 rounded-lg bg-neutral-100 text-neutral-700 text-sm font-medium">
-              Layout: {theme.layoutPattern}
-            </div>
-          )}
+    <div className="bg-gray-50 min-h-screen">
+      {sections.length > 0 ? (
+        <div className="space-y-0">
+          {sections.map((section, index) => renderSection(section, index))}
         </div>
-        
-        {/* Page Navigation */}
-        {pages.length > 1 && (
-          <div className="mb-6 bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <div className="text-xs font-semibold text-neutral-500 mb-3">PAGES</div>
-            <div className="flex gap-2 flex-wrap">
-              {pages.map((page, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentPageIndex(idx)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    currentPageIndex === idx
-                      ? 'bg-blue-500 text-white shadow-md'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                  }`}
-                >
-                  {page.name || `Page ${idx + 1}`}
-                </button>
-              ))}
-            </div>
+      ) : (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center p-8">
+            <div className="text-6xl mb-4">🎨</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Content Yet</h2>
+            <p className="text-gray-600">Submit a prompt to generate your website content</p>
           </div>
-        )}
-        
-        {/* Current Page Info */}
-        <div className="mb-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold border border-blue-200">
-            📄 {currentPage.name || 'Untitled Page'}
-            <span className="opacity-70">({currentPage.path || '/'})</span>
-          </div>
-          {currentPage.description && (
-            <p className="text-sm text-neutral-600 mt-2">{currentPage.description}</p>
-          )}
         </div>
-        
-        {/* Banner */}
-        {theme.bannerUrl && (
-          <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
-            <img src={theme.bannerUrl} alt="banner" className="w-full h-48 object-cover" />
+      )}
+    </div>
+  );
+};
+
+const StorePreview = ({ storeId, theme = {}, layout = {} }) => {
+  const [previewMode, setPreviewMode] = useState('legacy'); // Use legacy preview to avoid white screen
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const token = localStorage.getItem('token');
+  
+  // Debug logging and error handling
+  useEffect(() => {
+    console.log('StorePreview mounted:', { storeId, hasTheme: !!theme, hasLayout: !!layout, previewMode });
+    
+    // Log any errors that might be causing white screen
+    window.addEventListener('error', (e) => {
+      console.error('Window error in StorePreview:', e.error);
+    });
+    
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('Unhandled promise rejection in StorePreview:', e.reason);
+    });
+    
+    return () => {
+      window.removeEventListener('error', (e) => {
+        console.error('Window error in StorePreview:', e.error);
+      });
+      window.removeEventListener('unhandledrejection', (e) => {
+        console.error('Unhandled promise rejection in StorePreview:', e.reason);
+      });
+    };
+  }, [storeId, theme, layout, previewMode]);
+  
+  // Start loading when HTML preview mode is enabled
+  useEffect(() => {
+    if (previewMode === 'html' && storeId) {
+      setIsLoading(true);
+    }
+  }, [previewMode, storeId]);
+  
+  // Generate preview URL for iframe
+  const getPreviewUrl = () => {
+    if (!storeId) return null;
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    return `${baseUrl}/api/store/${storeId}/preview?token=${token}`;
+  };
+  
+  // Handle iframe load events
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+    setError(null);
+  };
+  
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setError('Failed to load preview');
+  };
+  
+  // Legacy preview component
+  const LegacyPreview = () => {
+    const { pageBg, primary, preset } = getThemeTokens(theme);
+    const fontFamily = theme?.fonts || 'Inter, system-ui, sans-serif';
+    
+    const [currentPageIndex, setCurrentPageIndex] = useState(0);
+    
+    const pages = Array.isArray(layout?.pages) && layout.pages.length > 0
+      ? layout.pages
+      : layout?.sections
+        ? [{ name: 'Home', path: '/', sections: layout.sections }]
+        : [{ name: 'Home', path: '/', sections: [] }];
+    
+    const currentPage = pages[currentPageIndex] || pages[0];
+    const currentSections = currentPage?.sections || [];
+    
+    return (
+      <div 
+        className="w-full min-h-screen" 
+        style={{ 
+          fontFamily, 
+          background: pageBg,
+          backgroundColor: pageBg.includes('gradient') ? undefined : pageBg
+        }}
+      >
+        <div className="p-6">
+          {/* Theme Info Bar */}
+          <div className="mb-6 flex items-center gap-3 flex-wrap">
+            {theme.logoUrl && (
+              <img src={theme.logoUrl} alt="logo" className="w-12 h-12 rounded-lg shadow" />
+            )}
+            <div 
+              className="px-4 py-2 rounded-lg text-white font-semibold shadow-md"
+              style={{ backgroundColor: primary }}
+            >
+              Primary Color
+            </div>
+            {preset && (
+              <div className="px-4 py-2 rounded-lg bg-neutral-800 text-white text-sm font-medium">
+                Style: {preset}
+              </div>
+            )}
+            {theme.layoutPattern && (
+              <div className="px-4 py-2 rounded-lg bg-neutral-100 text-neutral-700 text-sm font-medium">
+                Layout: {theme.layoutPattern}
+              </div>
+            )}
           </div>
-        )}
-        
-        {/* Render Sections */}
-        {currentSections.length > 0 ? (
-          currentSections.map((section, idx) => renderSection(section, idx, theme))
-        ) : (
-          <div className="bg-neutral-50 border-2 border-dashed border-neutral-300 rounded-xl p-12 text-center">
-            <div className="text-4xl mb-3">🎨</div>
-            <h3 className="text-xl font-semibold text-neutral-700 mb-2">No Sections Yet</h3>
-            <p className="text-neutral-600">Use the AI builder to generate your website content</p>
+          
+          {/* Page Navigation */}
+          {pages.length > 1 && (
+            <div className="mb-6 bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
+              <div className="text-xs font-semibold text-neutral-500 mb-3">PAGES</div>
+              <div className="flex gap-2 flex-wrap">
+                {pages.map((page, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentPageIndex(idx)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      currentPageIndex === idx
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                    }`}
+                  >
+                    {page.name || `Page ${idx + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Current Page Info */}
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold border border-blue-200">
+              📄 {currentPage.name || 'Untitled Page'}
+              <span className="opacity-70">({currentPage.path || '/'})</span>
+            </div>
+            {currentPage.description && (
+              <p className="text-sm text-neutral-600 mt-2">{currentPage.description}</p>
+            )}
           </div>
-        )}
-        
-        {/* Section Count Footer */}
-        <div className="mt-8 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-500">
-          <div className="flex items-center justify-center gap-6">
-            <span>{pages.length} {pages.length === 1 ? 'page' : 'pages'}</span>
-            <span>•</span>
-            <span>{currentSections.length} sections on this page</span>
-            <span>•</span>
-            <span className="font-mono">{preset || 'default'} theme</span>
+          
+          {/* Banner */}
+          {theme.bannerUrl && (
+            <div className="mb-6 rounded-xl overflow-hidden shadow-lg">
+              <img src={theme.bannerUrl} alt="banner" className="w-full h-48 object-cover" />
+            </div>
+          )}
+          
+          {/* Render Sections */}
+          {currentSections.length > 0 ? (
+            currentSections.map((section, idx) => renderSection(section, idx, theme))
+          ) : (
+            <div className="bg-neutral-50 border-2 border-dashed border-neutral-300 rounded-xl p-12 text-center">
+              <div className="text-4xl mb-3">🎨</div>
+              <h3 className="text-xl font-semibold text-neutral-700 mb-2">No Sections Yet</h3>
+              <p className="text-neutral-600">Use the AI builder to generate your website content</p>
+            </div>
+          )}
+          
+          {/* Section Count Footer */}
+          <div className="mt-8 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-500">
+            <div className="flex items-center justify-center gap-6">
+              <span>{pages.length} {pages.length === 1 ? 'page' : 'pages'}</span>
+              <span>•</span>
+              <span>{currentSections.length} sections on this page</span>
+              <span>•</span>
+              <span className="font-mono">{preset || 'default'} theme</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+  
+  // If no storeId, always use legacy preview
+  if (!storeId) {
+    return <LegacyPreview />;
+  }
+  
+  // Main preview render
+  if (previewMode === 'html' && storeId) {
+    const previewUrl = getPreviewUrl();
+    
+    if (!previewUrl) {
+      console.warn('No preview URL generated, falling back to legacy');
+      return <LegacyPreview />;
+    }
+    
+    return (
+      <div className="w-full h-full flex flex-col">
+        {/* Preview Mode Toggle */}
+        <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">Store Preview</h3>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                Loading...
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPreviewMode('html')}
+              className={`px-3 py-1 text-sm rounded ${
+                previewMode === 'html'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              HTML Preview
+            </button>
+            <button
+              onClick={() => setPreviewMode('legacy')}
+              className={`px-3 py-1 text-sm rounded ${
+                previewMode === 'legacy'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Legacy Preview
+            </button>
+          </div>
+        </div>
+        
+        {/* Error State */}
+        {error && (
+          <div className="p-4 bg-red-50 border-l-4 border-red-400">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Preview Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                  <button 
+                    onClick={() => setPreviewMode('legacy')}
+                    className="mt-2 text-red-800 underline hover:text-red-900"
+                  >
+                    Switch to Legacy Preview
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* HTML Preview */}
+        {previewUrl && !error && (
+          <div className="flex-1 relative">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+                <div className="text-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-gray-600">Loading preview...</p>
+                </div>
+              </div>
+            )}
+            <iframe
+              src={previewUrl}
+              className="w-full h-full border-0"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              title="Store Preview"
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Use simple fallback to prevent white screen crashes
+  try {
+    console.log('Rendering StorePreview with data:', { 
+      storeId,
+      hasTheme: !!theme, 
+      hasLayout: !!layout, 
+      sectionsCount: layout?.sections?.length || 0,
+      pagesCount: layout?.pages?.length || 0,
+      previewMode
+    });
+    
+    // For now, always use the simple fallback to prevent crashes
+    return <SimpleFallback storeId={storeId} theme={theme} layout={layout} />;
+    
+  } catch (error) {
+    console.error('StorePreview critical error:', error);
+    return (
+      <div className="p-8 text-center bg-red-50 border border-red-200 rounded-lg">
+        <div className="text-red-600 text-lg font-semibold mb-2">Critical Preview Error</div>
+        <div className="text-sm text-red-500 mb-4">Error: {error.message || 'Unknown error'}</div>
+        <div className="text-xs text-gray-600 mb-4">
+          StoreId: {storeId || 'None'} | Theme: {!!theme ? 'Yes' : 'No'} | Layout: {!!layout ? 'Yes' : 'No'}
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          Reload Page
+        </button>
+      </div>
+    );
+  }
 };
 
 export default StorePreview;
