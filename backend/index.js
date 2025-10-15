@@ -21,6 +21,18 @@ const teamRoutes = require('./routes/team');
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  console.log(`📥 ${new Date().toISOString()} ${req.method} ${req.path}`);
+  if (req.path.includes('ai-prompt')) {
+    console.log('🤖 AI request details:', {
+      headers: Object.keys(req.headers),
+      body: req.body,
+      params: req.params,
+      query: req.query
+    });
+  }
+  next();
+});
 
 // MongoDB Connection
 const connectDB = async () => {
