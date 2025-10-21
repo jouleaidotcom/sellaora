@@ -1,7 +1,7 @@
-# Sellaora Backend API Documentation
+# JouleAI Backend API Documentation
 
 ## Overview
-This is the backend API for Sellaora, an AI-powered e-commerce store builder platform. The backend is built with Node.js, Express, and MongoDB (Mongoose).
+This is the backend API for JouleAI, an AI-powered e-commerce store builder platform. The backend is built with Node.js, Express, and MongoDB (Mongoose).
 
 ---
 
@@ -544,7 +544,7 @@ Required environment variables:
 
 ```bash
 # MongoDB
-MONGODB_URI=mongodb://localhost:27017/sellaora
+MONGODB_URI=mongodb://localhost:27017/JouleAI
 
 # JWT
 JWT_SECRET=your_jwt_secret_here

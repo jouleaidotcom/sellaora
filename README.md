@@ -14,12 +14,16 @@
 - **Open, extensible, and always improving:** As an open source project, we invite the world to shape the future of commerce with us.
 
 
+## 📚 API Documentation
+
+[API Documentation](./API-DOCS.md)
+
 ## 👀 Project Status
 
 ⚠️ **This project is under active development.**  
 Expect new features, rapid improvement, and community-driven evolution.
 
-If you want to contribute, read our [contributing guide](https://github.com/tryjoule/sellaora/blob/main/CONTRIBUTING.md) here.
+If you want to contribute, read our [contributing guide](./CONTRIBUTING.md) here.
 ***
 
 ## 🌐 Community
