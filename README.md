@@ -28,6 +28,6 @@ If you want to contribute, read our [contributing guide](./CONTRIBUTING.md) here
 
 ## 🌐 Community
 
-Connect with innovators and builders on our [Discord](https://discord.gg/EjYu4wRD) server. Get real-time updates, discuss features, and share your ideas.
+Connect with innovators and builders on our [Discord](https://discord.gg/ypFZ5MVS) server. Get real-time updates, discuss features, and share your ideas.
 
 > **Hit STAR** to follow and support the vision. Let’s create the future of online businesses together.

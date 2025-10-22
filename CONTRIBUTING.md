@@ -1,5 +1,5 @@
-# Contributing to Sellaora
-Sellaora is an open-source e-commerce platform builder that serves as a powerful alternative to Shopify. Our mission is to democratize e-commerce by providing a customizable, and feature-rich platform that gives merchants complete control over their online stores.
+# Contributing to JouleAI
+JouleAI is an open-source e-commerce platform builder that serves as a powerful alternative to Shopify. Our mission is to democratize e-commerce by providing a customizable, and feature-rich platform that gives merchants complete control over their online stores.
 
 ### Why Contribute?
 - Join a growing community of e-commerce enthusiasts
@@ -13,7 +13,7 @@ This guide will help you get started with contributing to Sellaora.
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/your-username/sellaora.git`
+2. Clone your fork: `git clone https://github.com/your-username/JouleAI.git`
 3. Create a new branch: `git checkout -b feature/your-feature-name`
 4. Set up your development environment (see Development Setup below)
 
@@ -104,7 +104,7 @@ PORT=3000
 - Help others when you can
 - Accept constructive feedback
 
-Thank you for contributing to Sellaora! 🚀
+Thank you for contributing to JouleAI! 🚀
 
 ## License
 
